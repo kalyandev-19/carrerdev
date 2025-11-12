@@ -13,11 +13,9 @@ import { Page } from './types';
 const Home = ({ navigateTo }: { navigateTo: (page: Page) => void }) => (
   <div className="py-12">
     <div className="text-center mb-12">
-      <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-500">
-        Career Launchpad AI
+          <h1 className="text-4xl md:text-6xl font-extrabold text-white">        Career Launchpad AI
       </h1>
-      <p className="mt-4 text-lg text-slate-300 max-w-2xl mx-auto">
-        Your AI-powered co-pilot for navigating the path from classroom to career. Get instant advice, build the perfect resume, and discover your next opportunity.
+        <p className="mt-4 text-lg text-gray-200 max-w-2xl mx-auto">        Your AI-powered co-pilot for navigating the path from classroom to career. Get instant advice, build the perfect resume, and discover your next opportunity.
       </p>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 max-w-4xl mx-auto">
