@@ -1,6 +1,6 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
-import { GroundingSource, ResumeData, JobListing } from "../types.ts";
+import { GoogleGenAI } from "@google/genai";
+import { GroundingSource, ResumeData } from "../types.ts";
 
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
@@ -92,69 +92,6 @@ export const analyzeResumeStream = async function* (content: string | { data: st
     }
   } catch (error) {
     console.error("Error analyzing resume:", error);
-    throw error;
-  }
-};
-
-// Implemented findJobs with googleSearch grounding
-export const findJobs = async (role: string, location: string, remoteOnly: boolean, resume?: ResumeData | null): Promise<{ listings: JobListing[], sources: GroundingSource[] }> => {
-  const ai = getAI();
-  const prompt = `Find 5 currently open job listings for "${role}" in "${location}". ${remoteOnly ? "Only include remote positions." : ""} 
-  ${resume ? `Consider the candidate's professional background from their resume summary: ${resume.summary}. Skills: ${resume.skills}.` : ""}
-  For each job, provide: id, title, company, location, a brief description, the official job URL, source platform (e.g., LinkedIn, Indeed), and a list of key requirements.
-  Also, if a resume was provided, calculate a match score (0-100) based on how well the candidate's profile fits the job description.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            listings: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  title: { type: Type.STRING },
-                  company: { type: Type.STRING },
-                  location: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  url: { type: Type.STRING },
-                  sourcePlatform: { type: Type.STRING },
-                  requirements: { type: Type.ARRAY, items: { type: Type.STRING } },
-                  matchScore: { type: Type.NUMBER }
-                },
-                required: ['id', 'title', 'company', 'location', 'description', 'url', 'sourcePlatform', 'requirements']
-              }
-            }
-          },
-          required: ['listings']
-        }
-      }
-    });
-
-    const text = response.text || '{"listings":[]}';
-    const parsed = JSON.parse(text);
-    
-    // Extract sources from grounding metadata as required
-    const sources: GroundingSource[] = response.candidates?.[0]?.groundingMetadata?.groundingChunks
-      ?.map((chunk: any) => ({
-        title: chunk.web?.title || 'Job Portal',
-        uri: chunk.web?.uri || ''
-      }))
-      .filter((s: any) => s.uri) || [];
-
-    return {
-      listings: parsed.listings || [],
-      sources
-    };
-  } catch (error) {
-    console.error("Job search failed:", error);
     throw error;
   }
 };

@@ -9,13 +9,38 @@ import LoginPage from './components/LoginPage.tsx';
 import ChatBot from './components/ChatBot.tsx';
 import Card from './components/common/Card.tsx';
 import Icon from './components/common/Icon.tsx';
+import Spinner from './components/common/Spinner.tsx';
 import { Page, User } from './types.ts';
 import { databaseService, supabase } from './services/databaseService.ts';
 
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+    <div className="space-y-6 flex flex-col items-center">
+      <div className="bg-indigo-600 p-4 rounded-2xl shadow-xl shadow-indigo-500/20 animate-bounce">
+        <Icon name="logo" className="h-12 w-12 text-white" />
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Initializing CareerDev</h2>
+        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
+          <Spinner /> 
+          <span>Synchronizing secure services...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const ApiKeyGate = ({ onAuthorized }: { onAuthorized: () => void }) => {
   const handleConnect = async () => {
-    // @ts-ignore
-    await window.aistudio.openSelectKey();
+    try {
+      // @ts-ignore
+      if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+        // @ts-ignore
+        await window.aistudio.openSelectKey();
+      }
+    } catch (e) {
+      console.warn("External key selection tool unavailable.");
+    }
     onAuthorized();
   };
 
@@ -29,10 +54,10 @@ const ApiKeyGate = ({ onAuthorized }: { onAuthorized: () => void }) => {
         </div>
         <div className="space-y-2">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-            Connection Required
+            AI Connection
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Please establish a secure connection with the Gemini AI service to access the platform features.
+            Please link your Gemini API key to enable AI-powered resume analysis and career advice.
           </p>
         </div>
 
@@ -41,19 +66,8 @@ const ApiKeyGate = ({ onAuthorized }: { onAuthorized: () => void }) => {
           className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-3"
         >
           <Icon name="network" className="h-5 w-5" />
-          Connect Gemini API
+          Authorize Gemini AI
         </button>
-        
-        <div className="pt-4">
-          <a 
-            href="https://ai.google.dev/gemini-api/docs/billing" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline underline-offset-4"
-          >
-            Review API billing documentation
-          </a>
-        </div>
       </div>
     </div>
   );
@@ -64,15 +78,19 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
 
   useEffect(() => {
     const loadStats = async () => {
-      const resume = await databaseService.getResume(user.id);
-      let completion = 0;
-      if (resume) {
-        if (resume.summary) completion += 20;
-        if (resume.experience.length > 0) completion += 40;
-        if (resume.education.length > 0) completion += 30;
-        if (resume.skills) completion += 10;
+      try {
+        const resume = await databaseService.getResume(user.id);
+        let completion = 0;
+        if (resume) {
+          if (resume.summary) completion += 20;
+          if (resume.experience.length > 0) completion += 40;
+          if (resume.education.length > 0) completion += 30;
+          if (resume.skills) completion += 10;
+        }
+        setStats({ resumeComplete: completion });
+      } catch (e) {
+        console.error("Stats fetch error:", e);
       }
-      setStats({ resumeComplete: completion });
     };
     loadStats();
   }, [user.id]);
@@ -86,7 +104,7 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
               Career Dashboard
             </h1>
             <p className="text-slate-500 dark:text-slate-400 max-w-2xl text-lg">
-              Welcome back, {user.fullName.split(' ')[0]}. Manage your professional documents and get AI-driven career advice.
+              Greetings, {user.fullName.split(' ')[0]}. Manage your professional documents and career strategy.
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -101,43 +119,43 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
         <section>
           <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Professional Development</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Professional Advice</h2>
             <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card
-              title="AI Career Advisor"
-              description="Consult with our specialized AI for interview prep and career strategy."
+              title="Career Advisor"
+              description="Discuss strategy, interview prep, and career pathing with our AI assistant."
               icon={<Icon name="chat" />}
               onClick={() => navigateTo(Page.Chat)}
-              className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+              className="bg-white dark:bg-slate-900"
             />
             <Card
-              title="Industry Analysis"
-              description="Access real-time market data and emerging skill requirements in your field."
+              title="Industry QA"
+              description="Real-time industry insights and skill gap analysis using search grounding."
               icon={<Icon name="qa" />}
               onClick={() => navigateTo(Page.IndustryQA)}
-              className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+              className="bg-white dark:bg-slate-900"
             />
           </div>
         </section>
 
         <section>
           <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Resume & Portfolio</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Documents</h2>
             <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card
               title="Resume Builder"
-              description="Create your professional resume using industry-standard templates."
+              description="Create and refine your professional resume with AI writing assistance."
               icon={<Icon name="resume" />}
               onClick={() => navigateTo(Page.ResumeBuilder)}
-              className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+              className="bg-white dark:bg-slate-900"
             />
             <Card
-              title="Resume Scanner"
-              description="Get instant AI feedback on your resume's impact and keywords."
+              title="Resume Analyzer"
+              description="Upload your current resume for an instant deep-scan and improvement score."
               icon={<Icon name="analyzer" />}
               onClick={() => navigateTo(Page.ResumeAnalyzer)}
               className="bg-indigo-600 text-white border-transparent"
@@ -164,35 +182,52 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      // @ts-ignore
-      const hasKey = await window.aistudio.hasSelectedApiKey();
-      setIsKeySelected(hasKey);
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (session) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', session.user.id)
-            .maybeSingle();
-            
-          setCurrentUser({
-            id: session.user.id,
-            email: session.user.email!,
-            fullName: profile?.full_name || session.user.email!.split('@')[0],
-          });
-          setAuthView(AuthView.App);
+      try {
+        // Detect if we're in a browser environment with aistudio tools
+        // @ts-ignore
+        if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+          // @ts-ignore
+          const hasKey = await window.aistudio.hasSelectedApiKey();
+          setIsKeySelected(hasKey);
         } else {
-          setCurrentUser(null);
-          setAuthView(AuthView.Login);
+          // Default to true for standard web hosting (Vercel)
+          setIsKeySelected(true);
         }
-      });
 
-      const savedTheme = localStorage.getItem('careerdev_theme');
-      setIsDark(savedTheme === 'dark');
-      setInitialized(true);
+        // Setup auth listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+          if (session) {
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', session.user.id)
+                .maybeSingle();
+                
+              setCurrentUser({
+                id: session.user.id,
+                email: session.user.email!,
+                fullName: profile?.full_name || session.user.email!.split('@')[0],
+              });
+              setAuthView(AuthView.App);
+            } catch (err) {
+              console.error("Profile fetch error:", err);
+            }
+          } else {
+            setCurrentUser(null);
+            setAuthView(AuthView.Login);
+          }
+        });
 
-      return () => subscription.unsubscribe();
+        const savedTheme = localStorage.getItem('careerdev_theme');
+        setIsDark(savedTheme === 'dark');
+      } catch (err) {
+        console.error("App initialization crashed:", err);
+        setIsKeySelected(true); // Fallback to proceed
+      } finally {
+        // Ensure the loading screen shows for a minimum professional duration
+        setTimeout(() => setInitialized(true), 1000);
+      }
     };
     initApp();
   }, []);
@@ -220,15 +255,18 @@ const App: React.FC = () => {
     navigateTo(Page.Home);
   };
 
-  if (!initialized || isKeySelected === null) return null;
+  if (!initialized) {
+    return <LoadingScreen />;
+  }
 
-  if (!isKeySelected) {
+  // If a key is explicitly required but missing (Dev sandbox behavior)
+  if (isKeySelected === false) {
     return <ApiKeyGate onAuthorized={() => setIsKeySelected(true)} />;
   }
 
   if (!currentUser || authView === AuthView.Login) {
     return (
-      <div className={`${isDark ? 'dark' : ''} min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300`}>
+      <div className={`${isDark ? 'dark' : ''} min-h-screen bg-slate-50 dark:bg-slate-900`}>
         <LoginPage onLogin={(user) => {
            setCurrentUser(user);
            setAuthView(AuthView.App);

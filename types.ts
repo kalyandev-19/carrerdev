@@ -53,23 +53,3 @@ export interface IndustryResponse {
   text: string;
   sources: GroundingSource[];
 }
-
-// Added JobListing and RecentSearch interfaces
-export interface JobListing {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  description: string;
-  url: string;
-  sourcePlatform: string;
-  requirements: string[];
-  matchScore?: number;
-}
-
-export interface RecentSearch {
-  id: string;
-  role: string;
-  location: string;
-  timestamp: string;
-}
