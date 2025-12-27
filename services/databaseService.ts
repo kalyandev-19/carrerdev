@@ -136,63 +136,80 @@ export const databaseService = {
     if (error) throw new Error(error.message);
   },
 
-  // --- Saved Jobs Methods ---
+  // --- Added Job & Search Methods ---
   getSavedJobs: async (userId: string): Promise<JobListing[]> => {
     if (!isUuid(userId)) return [];
-
     const { data, error } = await supabase
       .from('saved_jobs')
-      .select('job')
+      .select('job_data')
       .eq('user_id', userId);
     
-    if (error) return [];
-    return data.map(item => item.job);
+    if (error) {
+      console.error('Error fetching saved jobs:', error.message);
+      return [];
+    }
+    return data?.map(item => item.job_data) || [];
   },
 
   toggleJobSave: async (userId: string, job: JobListing) => {
-    if (!isUuid(userId)) return false;
-
+    if (!isUuid(userId)) return;
+    
     const { data: existing } = await supabase
       .from('saved_jobs')
       .select('id')
       .eq('user_id', userId)
-      .contains('job', { id: job.id })
+      .eq('job_id', job.id)
       .maybeSingle();
 
     if (existing) {
-      await supabase.from('saved_jobs').delete().eq('id', existing.id);
-      return false;
+      await supabase
+        .from('saved_jobs')
+        .delete()
+        .eq('user_id', userId)
+        .eq('job_id', job.id);
     } else {
-      await supabase.from('saved_jobs').insert({ user_id: userId, job: job });
-      return true;
+      await supabase
+        .from('saved_jobs')
+        .insert({
+          user_id: userId,
+          job_id: job.id,
+          job_data: job
+        });
     }
   },
 
-  // --- Recent Searches Methods ---
   getRecentSearches: async (userId: string): Promise<RecentSearch[]> => {
     if (!isUuid(userId)) return [];
-
     const { data, error } = await supabase
       .from('recent_searches')
-      .select('role, location')
+      .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(5);
+      .limit(10);
     
-    if (error) return [];
-    return data;
+    if (error) {
+      console.error('Error fetching searches:', error.message);
+      return [];
+    }
+    return data?.map(d => ({
+      id: d.id,
+      role: d.role,
+      location: d.location,
+      timestamp: d.created_at
+    })) || [];
   },
 
-  addRecentSearch: async (userId: string, role: string, location: string) => {
+  addRecentSearch: async (userId: string, role: string, location: string): Promise<RecentSearch[]> => {
     if (!isUuid(userId)) return [];
+    
+    const { error } = await supabase.from('recent_searches').insert({
+      user_id: userId,
+      role,
+      location
+    });
 
-    await supabase.from('recent_searches').delete().eq('user_id', userId).eq('role', role).eq('location', location);
-    await supabase.from('recent_searches').insert({ user_id: userId, role, location });
+    if (error) console.error('Error adding search:', error.message);
+
     return databaseService.getRecentSearches(userId);
   },
-
-  clearRecentSearches: async (userId: string) => {
-    if (!isUuid(userId)) return;
-    await supabase.from('recent_searches').delete().eq('user_id', userId);
-  }
 };

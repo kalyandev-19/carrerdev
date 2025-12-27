@@ -1,9 +1,9 @@
+
 export enum Page {
   Home = 'home',
   IndustryQA = 'qa',
   ResumeBuilder = 'builder',
   ResumeAnalyzer = 'analyzer',
-  JobFinder = 'jobs',
   Chat = 'chat',
 }
 
@@ -49,29 +49,27 @@ export interface ResumeData {
   skills: string;
 }
 
-export interface JobListing {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  type: string;
-  description: string;
-  requirements: string[];
-  sourcePlatform?: string;
-  url?: string;
-}
-
-export interface RecentSearch {
-  role: string;
-  location: string;
-}
-
 export interface IndustryResponse {
   text: string;
   sources: GroundingSource[];
 }
 
-export interface JobSearchResponse {
-  listings: JobListing[];
-  sources: GroundingSource[];
+// Added JobListing and RecentSearch interfaces
+export interface JobListing {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  url: string;
+  sourcePlatform: string;
+  requirements: string[];
+  matchScore?: number;
+}
+
+export interface RecentSearch {
+  id: string;
+  role: string;
+  location: string;
+  timestamp: string;
 }

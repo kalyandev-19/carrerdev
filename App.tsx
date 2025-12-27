@@ -5,7 +5,6 @@ import Footer from './components/Footer.tsx';
 import IndustryQA from './components/IndustryQA.tsx';
 import ResumeBuilder from './components/ResumeBuilder.tsx';
 import ResumeAnalyzer from './components/ResumeAnalyzer.tsx';
-import JobFinder from './components/JobFinder.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import ChatBot from './components/ChatBot.tsx';
 import Card from './components/common/Card.tsx';
@@ -61,11 +60,10 @@ const ApiKeyGate = ({ onAuthorized }: { onAuthorized: () => void }) => {
 };
 
 const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: User }) => {
-  const [stats, setStats] = useState({ jobs: 0, resumeComplete: 0 });
+  const [stats, setStats] = useState({ resumeComplete: 0 });
 
   useEffect(() => {
     const loadStats = async () => {
-      const savedJobs = (await databaseService.getSavedJobs(user.id)).length;
       const resume = await databaseService.getResume(user.id);
       let completion = 0;
       if (resume) {
@@ -74,7 +72,7 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
         if (resume.education.length > 0) completion += 30;
         if (resume.skills) completion += 10;
       }
-      setStats({ jobs: savedJobs, resumeComplete: completion });
+      setStats({ resumeComplete: completion });
     };
     loadStats();
   }, [user.id]);
@@ -85,17 +83,13 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-3">
-              Career Management Dashboard
+              Career Dashboard
             </h1>
             <p className="text-slate-500 dark:text-slate-400 max-w-2xl text-lg">
-              Welcome back, {user.fullName.split(' ')[0]}. Manage your professional documents, explore new opportunities, and get AI-driven career advice.
+              Welcome back, {user.fullName.split(' ')[0]}. Manage your professional documents and get AI-driven career advice.
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl shadow-sm">
-               <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Applications Saved</span>
-               <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{stats.jobs}</span>
-            </div>
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl shadow-sm">
                <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Profile Strength</span>
                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.resumeComplete}%</span>
@@ -104,70 +98,52 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-        <div className="md:col-span-2 space-y-8">
-          <section>
-            <div className="flex items-center gap-4 mb-6">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Professional Development</h2>
-              <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <Card
-                title="AI Career Advisor"
-                description="Consult with our specialized AI for interview prep, career transitions, and professional strategy."
-                icon={<Icon name="chat" />}
-                onClick={() => navigateTo(Page.Chat)}
-                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-              />
-              <Card
-                title="Industry Analysis"
-                description="Access real-time market data, salary benchmarks, and emerging skill requirements in your field."
-                icon={<Icon name="qa" />}
-                onClick={() => navigateTo(Page.IndustryQA)}
-                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-              />
-            </div>
-          </section>
-
-          <section>
-            <div className="flex items-center gap-4 mb-6">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Resume & Portfolio</h2>
-              <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <Card
-                title="Resume Builder"
-                description="Create or edit your professional resume using industry-standard templates and STAR method guidance."
-                icon={<Icon name="resume" />}
-                onClick={() => navigateTo(Page.ResumeBuilder)}
-                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-              />
-              <Card
-                title="Resume Scanner"
-                description="Get instant AI feedback on your resume's impact, keywords, and overall structural integrity."
-                icon={<Icon name="analyzer" />}
-                onClick={() => navigateTo(Page.ResumeAnalyzer)}
-                className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-              />
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-8">
-          <section>
-            <div className="flex items-center gap-4 mb-6">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Active Search</h2>
-              <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+        <section>
+          <div className="flex items-center gap-4 mb-6">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Professional Development</h2>
+            <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card
-              title="Job Search Engine"
-              description="Find and apply to curated job and internship listings across multiple global platforms."
-              icon={<Icon name="search" />}
-              onClick={() => navigateTo(Page.JobFinder)}
-              className="bg-indigo-600 text-white border-transparent h-full flex flex-col justify-center"
+              title="AI Career Advisor"
+              description="Consult with our specialized AI for interview prep and career strategy."
+              icon={<Icon name="chat" />}
+              onClick={() => navigateTo(Page.Chat)}
+              className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
             />
-          </section>
-        </div>
+            <Card
+              title="Industry Analysis"
+              description="Access real-time market data and emerging skill requirements in your field."
+              icon={<Icon name="qa" />}
+              onClick={() => navigateTo(Page.IndustryQA)}
+              className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+            />
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center gap-4 mb-6">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Resume & Portfolio</h2>
+            <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Card
+              title="Resume Builder"
+              description="Create your professional resume using industry-standard templates."
+              icon={<Icon name="resume" />}
+              onClick={() => navigateTo(Page.ResumeBuilder)}
+              className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+            />
+            <Card
+              title="Resume Scanner"
+              description="Get instant AI feedback on your resume's impact and keywords."
+              icon={<Icon name="analyzer" />}
+              onClick={() => navigateTo(Page.ResumeAnalyzer)}
+              className="bg-indigo-600 text-white border-transparent"
+            />
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -180,7 +156,7 @@ enum AuthView {
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
-  const [authView, setAuthView] = useState<AuthView>(AuthView.Login); // Default to login view
+  const [authView, setAuthView] = useState<AuthView>(AuthView.Login);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isDark, setIsDark] = useState<boolean>(false);
   const [initialized, setInitialized] = useState(false);
@@ -188,12 +164,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      // API Key Check
       // @ts-ignore
       const hasKey = await window.aistudio.hasSelectedApiKey();
       setIsKeySelected(hasKey);
 
-      // Supabase Auth Listener
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session) {
           const { data: profile } = await supabase
@@ -214,7 +188,6 @@ const App: React.FC = () => {
         }
       });
 
-      // Load Theme
       const savedTheme = localStorage.getItem('careerdev_theme');
       setIsDark(savedTheme === 'dark');
       setInitialized(true);
@@ -253,7 +226,6 @@ const App: React.FC = () => {
     return <ApiKeyGate onAuthorized={() => setIsKeySelected(true)} />;
   }
 
-  // Gate the entire app behind authentication
   if (!currentUser || authView === AuthView.Login) {
     return (
       <div className={`${isDark ? 'dark' : ''} min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300`}>
@@ -278,8 +250,6 @@ const App: React.FC = () => {
         return <ResumeBuilder user={currentUser} />;
       case Page.ResumeAnalyzer:
         return <ResumeAnalyzer />;
-      case Page.JobFinder:
-        return <JobFinder user={currentUser} />;
       case Page.Home:
       default:
         return <Home navigateTo={navigateTo} user={currentUser} />;

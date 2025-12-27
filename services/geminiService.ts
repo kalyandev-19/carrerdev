@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { JobListing, GroundingSource, JobSearchResponse, ResumeData } from "../types.ts";
+import { GroundingSource, ResumeData, JobListing } from "../types.ts";
 
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
@@ -96,31 +96,14 @@ export const analyzeResumeStream = async function* (content: string | { data: st
   }
 };
 
-export const findJobs = async (role: string, location: string, isLinkedInOnly: boolean = false, userResume?: ResumeData | null): Promise<JobSearchResponse> => {
+// Implemented findJobs with googleSearch grounding
+export const findJobs = async (role: string, location: string, remoteOnly: boolean, resume?: ResumeData | null): Promise<{ listings: JobListing[], sources: GroundingSource[] }> => {
   const ai = getAI();
-  
-  const resumeContext = userResume 
-    ? `User Resume Profile: ${userResume.summary}. Skills: ${userResume.skills}. Use this context to personalize the search and calculate 'matchScore'.`
-    : "";
+  const prompt = `Find 5 currently open job listings for "${role}" in "${location}". ${remoteOnly ? "Only include remote positions." : ""} 
+  ${resume ? `Consider the candidate's professional background from their resume summary: ${resume.summary}. Skills: ${resume.skills}.` : ""}
+  For each job, provide: id, title, company, location, a brief description, the official job URL, source platform (e.g., LinkedIn, Indeed), and a list of key requirements.
+  Also, if a resume was provided, calculate a match score (0-100) based on how well the candidate's profile fits the job description.`;
 
-  const prompt = `SEARCH TASK: Find 5 active, real ${role} job/internship listings in ${location}. 
-  
-  CRITICAL URL INSTRUCTION: 
-  For every job you find, you MUST extract the specific, direct URL to that job posting from your search results. 
-  - DO NOT provide root domains (e.g., "https://linkedin.com").
-  - DO NOT hallucinate URLs.
-  - The "url" field MUST be a deep link to the actual job description or application form.
-  - If you cannot find a direct URL for a specific listing, omit that listing entirely.
-
-  ${resumeContext}
-
-  JSON OUTPUT ONLY.
-  Rules: 
-  1. Description: max 120 chars. 
-  2. Requirements: Exactly 3 specific points. 
-  3. MatchScore: 0-100 based on user profile.
-  4. SourcePlatform: Use the name of the site where the job was found (e.g., "LinkedIn", "Lever", "Greenhouse", "Indeed").`;
-  
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -129,47 +112,49 @@ export const findJobs = async (role: string, location: string, isLinkedInOnly: b
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              company: { type: Type.STRING },
-              location: { type: Type.STRING },
-              type: { type: Type.STRING },
-              description: { type: Type.STRING },
-              requirements: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-              sourcePlatform: { type: Type.STRING },
-              url: { type: Type.STRING },
-              matchScore: { type: Type.INTEGER },
-            },
-            required: ["title", "company", "location", "type", "description", "requirements", "sourcePlatform", "url"],
+          type: Type.OBJECT,
+          properties: {
+            listings: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.STRING },
+                  title: { type: Type.STRING },
+                  company: { type: Type.STRING },
+                  location: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  url: { type: Type.STRING },
+                  sourcePlatform: { type: Type.STRING },
+                  requirements: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  matchScore: { type: Type.NUMBER }
+                },
+                required: ['id', 'title', 'company', 'location', 'description', 'url', 'sourcePlatform', 'requirements']
+              }
+            }
           },
-        },
-      },
+          required: ['listings']
+        }
+      }
     });
 
-    const jsonText = response.text?.trim() || "[]";
-    const listingsRaw = JSON.parse(jsonText) as Omit<JobListing, 'id'>[];
-
-    const listings = listingsRaw.map(listing => ({
-      ...listing,
-      id: `${listing.title}-${listing.company}`.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substr(2, 5),
-    }));
-
+    const text = response.text || '{"listings":[]}';
+    const parsed = JSON.parse(text);
+    
+    // Extract sources from grounding metadata as required
     const sources: GroundingSource[] = response.candidates?.[0]?.groundingMetadata?.groundingChunks
       ?.map((chunk: any) => ({
-        title: chunk.web?.title || 'Job Source',
-        uri: chunk.web?.uri || '',
-      })).filter((s: GroundingSource) => s.uri) || [];
-    
-    return { listings, sources };
-    
+        title: chunk.web?.title || 'Job Portal',
+        uri: chunk.web?.uri || ''
+      }))
+      .filter((s: any) => s.uri) || [];
+
+    return {
+      listings: parsed.listings || [],
+      sources
+    };
   } catch (error) {
-    console.error("Error finding jobs:", error);
-    return { listings: [], sources: [] };
+    console.error("Job search failed:", error);
+    throw error;
   }
 };
