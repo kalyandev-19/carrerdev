@@ -11,7 +11,7 @@ import ChatBot from './components/ChatBot.tsx';
 import Card from './components/common/Card.tsx';
 import Icon from './components/common/Icon.tsx';
 import { Page, User } from './types.ts';
-import { databaseService } from './services/databaseService.ts';
+import { databaseService, supabase } from './services/databaseService.ts';
 
 const ApiKeyGate = ({ onAuthorized }: { onAuthorized: () => void }) => {
   const handleConnect = async () => {
@@ -180,7 +180,7 @@ enum AuthView {
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
-  const [authView, setAuthView] = useState<AuthView>(AuthView.App);
+  const [authView, setAuthView] = useState<AuthView>(AuthView.Login); // Default to login view
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isDark, setIsDark] = useState<boolean>(false);
   const [initialized, setInitialized] = useState(false);
@@ -188,28 +188,38 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
+      // API Key Check
       // @ts-ignore
       const hasKey = await window.aistudio.hasSelectedApiKey();
       setIsKeySelected(hasKey);
 
-      const savedUser = await databaseService.getSession();
-      if (savedUser) {
-        setCurrentUser(savedUser);
-      } else {
-        const guestId = localStorage.getItem('career_dev_guest_id') || ('guest_' + Math.random().toString(36).substr(2, 5));
-        localStorage.setItem('career_dev_guest_id', guestId);
-        
-        const guestUser: User = {
-          id: guestId,
-          email: 'guest@careerdev.com',
-          fullName: 'Guest User'
-        };
-        setCurrentUser(guestUser);
-      }
+      // Supabase Auth Listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', session.user.id)
+            .maybeSingle();
+            
+          setCurrentUser({
+            id: session.user.id,
+            email: session.user.email!,
+            fullName: profile?.full_name || session.user.email!.split('@')[0],
+          });
+          setAuthView(AuthView.App);
+        } else {
+          setCurrentUser(null);
+          setAuthView(AuthView.Login);
+        }
+      });
 
+      // Load Theme
       const savedTheme = localStorage.getItem('careerdev_theme');
       setIsDark(savedTheme === 'dark');
       setInitialized(true);
+
+      return () => subscription.unsubscribe();
     };
     initApp();
   }, []);
@@ -230,28 +240,11 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const handleLogin = async (user: User) => {
-    setCurrentUser(user);
-    setAuthView(AuthView.App);
-    setCurrentPage(Page.Home);
-    await databaseService.setSession(user);
-  };
-
   const handleLogout = async () => {
-    await databaseService.setSession(null);
-    const guestId = 'guest_' + Math.random().toString(36).substr(2, 5);
-    const guestUser: User = {
-      id: guestId,
-      email: 'guest@careerdev.com',
-      fullName: 'Guest User'
-    };
-    setCurrentUser(guestUser);
-    setCurrentPage(Page.Home);
-    setAuthView(AuthView.App);
-  };
-
-  const showLogin = () => {
+    await databaseService.logout();
+    setCurrentUser(null);
     setAuthView(AuthView.Login);
+    navigateTo(Page.Home);
   };
 
   if (!initialized || isKeySelected === null) return null;
@@ -260,19 +253,15 @@ const App: React.FC = () => {
     return <ApiKeyGate onAuthorized={() => setIsKeySelected(true)} />;
   }
 
-  if (authView === AuthView.Login) {
+  // Gate the entire app behind authentication
+  if (!currentUser || authView === AuthView.Login) {
     return (
       <div className={`${isDark ? 'dark' : ''} min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300`}>
-        <div className="relative">
-          <button 
-            onClick={() => setAuthView(AuthView.App)}
-            className="absolute top-8 left-8 flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors font-semibold text-sm z-50"
-          >
-            <Icon name="logo" className="h-4 w-4 rotate-180" />
-            Back to Home
-          </button>
-          <LoginPage onLogin={handleLogin} />
-        </div>
+        <LoginPage onLogin={(user) => {
+           setCurrentUser(user);
+           setAuthView(AuthView.App);
+           setCurrentPage(Page.Home);
+        }} />
       </div>
     );
   }
@@ -300,17 +289,15 @@ const App: React.FC = () => {
   return (
     <div className={`${isDark ? 'dark' : ''} min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300`}>
       <div className="flex flex-col min-h-screen">
-        {currentUser && (
-          <Header 
-            currentPage={currentPage} 
-            navigateTo={navigateTo} 
-            user={currentUser} 
-            onLogout={handleLogout}
-            onShowLogin={showLogin}
-            isDark={isDark}
-            toggleTheme={() => setIsDark(!isDark)}
-          />
-        )}
+        <Header 
+          currentPage={currentPage} 
+          navigateTo={navigateTo} 
+          user={currentUser} 
+          onLogout={handleLogout}
+          onShowLogin={() => setAuthView(AuthView.Login)}
+          isDark={isDark}
+          toggleTheme={() => setIsDark(!isDark)}
+        />
         <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-in fade-in slide-in-from-top-2 duration-500">
             {renderPage()}

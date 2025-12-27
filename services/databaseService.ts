@@ -1,135 +1,198 @@
 
+import { createClient } from '@supabase/supabase-js';
 import { User, ResumeData, JobListing, RecentSearch } from '../types';
 
-const DB_KEYS = {
-  USERS: 'career_launchpad_users',
-  RESUMES: 'career_launchpad_resumes',
-  SAVED_JOBS: 'career_launchpad_saved_jobs',
-  RECENT_SEARCHES: 'career_launchpad_recent_searches',
-  SESSION: 'career_launchpad_current_user'
-};
+const SUPABASE_URL = 'https://beerzpfihrilduvhkqdo.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZXJ6cGZpaHJpbGR1dmhrcWRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NDYwMTcsImV4cCI6MjA4MjQyMjAxN30.V7QxMmYesJJZdwjIKcZL5LEGtKib6yCVMy9ngj5q97o';
 
-// Helper to simulate network latency
-const delay = (ms: number = 200) => new Promise(resolve => setTimeout(resolve, ms));
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const getCollection = <T>(key: string): T[] => {
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
-};
-
-const saveCollection = <T>(key: string, data: T[]): void => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
+// Helper to check if a string is a valid UUID before querying Supabase
+const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 
 export const databaseService = {
-  // --- User Methods ---
-  getUsers: async () => {
-    await delay();
-    return getCollection<{id: string; email: string; password: string; fullName: string}>(DB_KEYS.USERS);
-  },
-  
+  // --- User & Auth Methods ---
   createUser: async (email: string, password: string, fullName: string): Promise<User> => {
-    await delay(500);
-    const users = getCollection<{id: string; email: string; password: string; fullName: string}>(DB_KEYS.USERS);
-    const newUser = { id: Math.random().toString(36).substr(2, 9), email, password, fullName };
-    saveCollection(DB_KEYS.USERS, [...users, newUser]);
-    return { id: newUser.id, email: newUser.email, fullName: newUser.fullName };
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (authError) throw authError;
+    if (!authData.user) throw new Error('User creation failed');
+
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: authData.user.id,
+      email: email,
+      full_name: fullName,
+    });
+
+    if (profileError) console.error('Profile creation error:', profileError.message);
+
+    return {
+      id: authData.user.id,
+      email: authData.user.email!,
+      fullName: fullName,
+    };
   },
 
-  findUserByEmail: async (email: string) => {
-    await delay();
-    const users = getCollection<{id: string; email: string; password: string; fullName: string}>(DB_KEYS.USERS);
-    return users.find(u => u.email === email);
+  login: async (email: string, password: string): Promise<User> => {
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) throw authError;
+    if (!authData.user) throw new Error('Login failed');
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+
+    return {
+      id: authData.user.id,
+      email: authData.user.email!,
+      fullName: profile?.full_name || authData.user.email!.split('@')[0],
+    };
+  },
+
+  logout: async () => {
+    await supabase.auth.signOut();
   },
 
   setSession: async (user: User | null) => {
-    await delay();
-    if (user) {
-      localStorage.setItem(DB_KEYS.SESSION, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(DB_KEYS.SESSION);
-    }
+    if (!user) await supabase.auth.signOut();
   },
 
   getSession: async (): Promise<User | null> => {
-    await delay();
-    const data = localStorage.getItem(DB_KEYS.SESSION);
-    return data ? JSON.parse(data) : null;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    return {
+      id: session.user.id,
+      email: session.user.email!,
+      fullName: profile?.full_name || session.user.email!.split('@')[0],
+    };
   },
 
   // --- Resume Methods ---
   getResume: async (userId: string): Promise<ResumeData | null> => {
-    await delay();
-    const resumes = getCollection<ResumeData>(DB_KEYS.RESUMES);
-    return resumes.find(r => r.userId === userId) || null;
+    if (!isUuid(userId)) return null;
+
+    const { data, error } = await supabase
+      .from('resumes')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching resume:', error.message);
+      return null;
+    }
+    
+    return data ? {
+        userId: data.user_id,
+        fullName: data.full_name,
+        email: data.email,
+        phone: data.phone,
+        linkedin: data.linkedin,
+        github: data.github,
+        summary: data.summary,
+        education: data.education || [],
+        experience: data.experience || [],
+        skills: data.skills
+    } : null;
   },
 
   saveResume: async (resume: ResumeData) => {
-    await delay(300);
-    const resumes = getCollection<ResumeData>(DB_KEYS.RESUMES);
-    const index = resumes.findIndex(r => r.userId === resume.userId);
-    if (index > -1) {
-      resumes[index] = resume;
-      saveCollection(DB_KEYS.RESUMES, resumes);
-    } else {
-      saveCollection(DB_KEYS.RESUMES, [...resumes, resume]);
-    }
+    if (!isUuid(resume.userId)) return;
+
+    // Ensure education and experience are correctly serialized for JSONB
+    const payload = {
+      user_id: resume.userId,
+      full_name: resume.fullName,
+      email: resume.email,
+      phone: resume.phone,
+      linkedin: resume.linkedin,
+      github: resume.github,
+      summary: resume.summary,
+      education: JSON.parse(JSON.stringify(resume.education)),
+      experience: JSON.parse(JSON.stringify(resume.experience)),
+      skills: resume.skills
+    };
+
+    const { error } = await supabase
+      .from('resumes')
+      .upsert(payload, { onConflict: 'user_id' });
+
+    if (error) throw new Error(error.message);
   },
 
   // --- Saved Jobs Methods ---
   getSavedJobs: async (userId: string): Promise<JobListing[]> => {
-    await delay();
-    const allSaved = getCollection<{userId: string; job: JobListing}>(DB_KEYS.SAVED_JOBS);
-    return allSaved.filter(item => item.userId === userId).map(item => item.job);
+    if (!isUuid(userId)) return [];
+
+    const { data, error } = await supabase
+      .from('saved_jobs')
+      .select('job')
+      .eq('user_id', userId);
+    
+    if (error) return [];
+    return data.map(item => item.job);
   },
 
   toggleJobSave: async (userId: string, job: JobListing) => {
-    await delay();
-    const allSaved = getCollection<{userId: string; job: JobListing}>(DB_KEYS.SAVED_JOBS);
-    const exists = allSaved.find(item => item.userId === userId && item.job.id === job.id);
-    
-    let updated;
-    if (exists) {
-      updated = allSaved.filter(item => !(item.userId === userId && item.job.id === job.id));
+    if (!isUuid(userId)) return false;
+
+    const { data: existing } = await supabase
+      .from('saved_jobs')
+      .select('id')
+      .eq('user_id', userId)
+      .contains('job', { id: job.id })
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('saved_jobs').delete().eq('id', existing.id);
+      return false;
     } else {
-      updated = [...allSaved, { userId, job }];
+      await supabase.from('saved_jobs').insert({ user_id: userId, job: job });
+      return true;
     }
-    saveCollection(DB_KEYS.SAVED_JOBS, updated);
-    return !exists;
   },
 
   // --- Recent Searches Methods ---
   getRecentSearches: async (userId: string): Promise<RecentSearch[]> => {
-    await delay();
-    const allSearches = getCollection<{userId: string; searches: RecentSearch[]}>(DB_KEYS.RECENT_SEARCHES);
-    const userSearches = allSearches.find(item => item.userId === userId);
-    return userSearches ? userSearches.searches : [];
+    if (!isUuid(userId)) return [];
+
+    const { data, error } = await supabase
+      .from('recent_searches')
+      .select('role, location')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    
+    if (error) return [];
+    return data;
   },
 
   addRecentSearch: async (userId: string, role: string, location: string) => {
-    await delay();
-    const allSearches = getCollection<{userId: string; searches: RecentSearch[]}>(DB_KEYS.RECENT_SEARCHES);
-    const index = allSearches.findIndex(item => item.userId === userId);
-    
-    let userSearches = index > -1 ? allSearches[index].searches : [];
-    userSearches = userSearches.filter(s => !(s.role.toLowerCase() === role.toLowerCase() && s.location.toLowerCase() === location.toLowerCase()));
-    userSearches.unshift({ role, location });
-    userSearches = userSearches.slice(0, 5);
-    
-    if (index > -1) {
-      allSearches[index].searches = userSearches;
-    } else {
-      allSearches.push({ userId, searches: userSearches });
-    }
-    
-    saveCollection(DB_KEYS.RECENT_SEARCHES, allSearches);
-    return userSearches;
+    if (!isUuid(userId)) return [];
+
+    await supabase.from('recent_searches').delete().eq('user_id', userId).eq('role', role).eq('location', location);
+    await supabase.from('recent_searches').insert({ user_id: userId, role, location });
+    return databaseService.getRecentSearches(userId);
   },
 
   clearRecentSearches: async (userId: string) => {
-    await delay();
-    const allSearches = getCollection<{userId: string; searches: RecentSearch[]}>(DB_KEYS.RECENT_SEARCHES);
-    const updated = allSearches.filter(item => item.userId !== userId);
-    saveCollection(DB_KEYS.RECENT_SEARCHES, updated);
+    if (!isUuid(userId)) return;
+    await supabase.from('recent_searches').delete().eq('user_id', userId);
   }
 };

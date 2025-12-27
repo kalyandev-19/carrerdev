@@ -9,7 +9,9 @@ export const askIndustryExpertStream = async function* (field: string, question:
   try {
     const responseStream = await ai.models.generateContentStream({
       model: 'gemini-3-flash-preview',
-      contents: `Question about the ${field} industry: "${question}"`,
+      contents: [{
+        parts: [{ text: `Question about the ${field} industry: "${question}"` }]
+      }],
       config: {
         tools: [{ googleSearch: {} }],
         systemInstruction: `You are a helpful and experienced professional in the ${field} industry. 
@@ -33,7 +35,9 @@ export const generateResumeSectionStream = async function* (prompt: string) {
     try {
         const responseStream = await ai.models.generateContentStream({
             model: 'gemini-3-flash-preview',
-            contents: prompt,
+            contents: [{
+                parts: [{ text: prompt }]
+            }],
             config: {
                 systemInstruction: "You are a professional resume writer. Generate a concise and impactful response. Focus on action verbs and achievements."
             }
@@ -77,8 +81,8 @@ export const analyzeResumeStream = async function* (content: string | { data: st
 
   try {
     const responseStream = await ai.models.generateContentStream({
-      model: 'gemini-3-pro-preview',
-      contents: { parts },
+      model: 'gemini-3-flash-preview',
+      contents: [{ parts }],
       config: {
         systemInstruction: systemPrompt
       }
@@ -95,7 +99,6 @@ export const analyzeResumeStream = async function* (content: string | { data: st
 export const findJobs = async (role: string, location: string, isLinkedInOnly: boolean = false, userResume?: ResumeData | null): Promise<JobSearchResponse> => {
   const ai = getAI();
   
-  // Specific instruction for LinkedIn Mode
   const sourceInstruction = isLinkedInOnly 
     ? "STRICT: ONLY find roles posted on linkedin.com/jobs. Use site:linkedin.com/jobs in your search." 
     : "Source from LinkedIn, Indeed, Glassdoor.";
@@ -117,8 +120,8 @@ export const findJobs = async (role: string, location: string, isLinkedInOnly: b
   
   try {
     const response = await ai.models.generateContent({
-      model: isLinkedInOnly ? "gemini-3-pro-preview" : "gemini-3-flash-preview",
-      contents: prompt,
+      model: 'gemini-3-flash-preview',
+      contents: [{ parts: [{ text: prompt }] }],
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",

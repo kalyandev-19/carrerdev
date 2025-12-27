@@ -35,9 +35,8 @@ const NavLink: React.FC<{
   );
 };
 
-const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout, onShowLogin, isDark, toggleTheme }) => {
-  const initials = user.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-  const isGuest = user.id.startsWith('guest_') || user.id.startsWith('dev_');
+const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout, isDark, toggleTheme }) => {
+  const initials = user.fullName ? user.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
 
   return (
     <header className="bg-white dark:bg-slate-900 sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
@@ -75,29 +74,16 @@ const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout
                 <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate max-w-[120px]">
                   {user.fullName}
                 </span>
-                {isGuest ? (
-                  <button 
-                    onClick={onShowLogin}
-                    className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
-                  >
-                    Login / Sign up
-                  </button>
-                ) : (
-                  <button 
-                    onClick={onLogout}
-                    className="text-[10px] text-slate-400 hover:text-rose-500 transition-colors font-semibold"
-                  >
-                    Logout
-                  </button>
-                )}
+                <button 
+                  onClick={onLogout}
+                  className="text-[10px] text-slate-400 hover:text-rose-500 transition-colors font-semibold"
+                >
+                  Logout
+                </button>
               </div>
               
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm ${
-                isGuest 
-                ? 'bg-slate-200 dark:bg-slate-800 text-slate-500' 
-                : 'bg-indigo-600'
-              }`}>
-                {initials || 'G'}
+              <div className="h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm bg-indigo-600">
+                {initials}
               </div>
             </div>
           </div>

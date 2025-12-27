@@ -26,49 +26,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
     try {
       if (isLogin) {
-        const user = await databaseService.findUserByEmail(email);
-        
-        if (!user) {
-          setError('Invalid email or password');
-        } else if (user.password !== password) {
-          setError('Invalid email or password');
-        } else {
-          const authUser = { id: user.id, email: user.email, fullName: user.fullName };
-          await databaseService.setSession(authUser);
-          onLogin(authUser);
-        }
+        const user = await databaseService.login(email, password);
+        onLogin(user);
       } else {
         if (!email || !password || !fullName) {
           setError('Please fill in all fields');
-        } else if (await databaseService.findUserByEmail(email)) {
-          setError('Email already in use');
         } else if (password.length < 6) {
           setError('Password must be at least 6 characters');
         } else {
           const newUser = await databaseService.createUser(email, password, fullName);
-          await databaseService.setSession(newUser);
           onLogin(newUser);
         }
       }
-    } catch (err) {
-      console.error(err);
-      setError('An unexpected error occurred. Please try again.');
+    } catch (err: any) {
+      console.error('Auth error:', err);
+      let message = err.message || 'An unexpected error occurred.';
+      if (message.includes('Invalid login credentials')) {
+        message = 'Login failed. Check your email/password or create a new account.';
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGuestAccess = async () => {
-    if (loading) return;
-    setLoading(true);
-    const guestUser: User = {
-      id: 'guest_' + Math.random().toString(36).substr(2, 5),
-      email: 'guest@careerdev.com',
-      fullName: 'Guest User'
-    };
-    await databaseService.setSession(guestUser);
-    onLogin(guestUser);
-    setLoading(false);
   };
 
   return (
@@ -92,6 +71,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           {!isLogin && (
             <Input
               label="Full Name"
+              id="fullName"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="John Doe"
@@ -101,6 +81,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           )}
           <Input
             label="Email Address"
+            id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -110,6 +91,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           />
           <Input
             label="Password"
+            id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -140,21 +122,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
           >
             {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-          </button>
-
-          <div className="w-full flex items-center gap-3 py-2">
-            <div className="h-px flex-grow bg-slate-200 dark:bg-slate-800"></div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">or</span>
-            <div className="h-px flex-grow bg-slate-200 dark:bg-slate-800"></div>
-          </div>
-
-          <button
-            onClick={handleGuestAccess}
-            disabled={loading}
-            className="w-full py-3 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm font-semibold flex items-center justify-center gap-2"
-          >
-            Continue as Guest
-            <Icon name="send" className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
