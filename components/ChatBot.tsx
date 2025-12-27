@@ -1,10 +1,10 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleGenAI, GenerateContentResponse, LiveServerMessage, Modality } from "@google/genai";
-import Button from './common/Button';
-import Spinner from './common/Spinner';
-import Icon from './common/Icon';
-import { User } from '../types';
+import Button from './common/Button.tsx';
+import Spinner from './common/Spinner.tsx';
+import Icon from './common/Icon.tsx';
+import { User } from '../types.ts';
 
 interface Message {
   role: 'user' | 'model';
@@ -80,7 +80,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
-      text: `Protocol initiated. Greetings, ${user.fullName.split(' ')[0]}. I am your CareerDev Intelligence Kernel. State your query for analysis.`
+      text: `System ready. Greetings, ${user.fullName.split(' ')[0]}. I am your Career Assistant. How can I help you today?`
     }
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -282,7 +282,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
           },
-          systemInstruction: 'You are an Encouraging Career Intelligence Kernel. Use brief, analytical voice protocols.',
+          systemInstruction: 'You are an Encouraging Career Assistant. Use brief, professional advice.',
         }
       });
 
@@ -334,11 +334,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
       const chat = ai.chats.create({
         model: 'gemini-3-pro-preview',
         config: {
-          systemInstruction: `You are a high-level Career Intelligence Kernel (CareerDev AI). 
-          You provide scientific, data-driven career advice. 
-          Your tone is professional, analytical, and encouraging. 
-          Use industry-specific terminology where appropriate. 
-          Structure your responses cleanly.`,
+          systemInstruction: `You are a professional Career Assistant. Provide helpful, analytical, and data-driven career advice. Use a friendly yet professional tone.`,
         },
         history: history
       });
@@ -368,7 +364,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
         generateAndPlaySpeech(fullText, messages.length + 1);
       }
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'model', text: "Protocol error. Neural link unstable." }]);
+      setMessages(prev => [...prev, { role: 'model', text: "Connection error. System unstable." }]);
     } finally {
       setIsLoading(false);
     }
@@ -393,7 +389,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
           <div>
             <h2 className={`text-xl font-mono font-bold leading-tight uppercase tracking-tight transition-colors duration-500 ${
               isVoiceMode && !isSpeechFallback ? 'text-white' : 'text-slate-900 dark:text-white'
-            }`}>Intelligence_Kernel</h2>
+            }`}>Career_Assistant</h2>
             <p className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full transition-all duration-500 ${
                 isVoiceMode && !isSpeechFallback ? 'bg-indigo-400 animate-pulse' : 
@@ -401,7 +397,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
                 isAutoSpeak ? 'bg-fuchsia-500' : 'bg-slate-400'
               }`}></span>
               <span className={isVoiceMode && !isSpeechFallback ? 'text-indigo-400' : 'text-slate-500'}>
-                {isSpeechFallback ? 'FALLBACK_TTS' : isVoiceMode ? 'NEURAL_LINK' : isAutoSpeak ? 'VOICE_FEEDBACK' : 'IDLE'}
+                {isSpeechFallback ? 'FALLBACK_MODE' : isVoiceMode ? 'LIVE_VOICE' : isAutoSpeak ? 'VOICE_FEEDBACK' : 'IDLE'}
               </span>
             </p>
           </div>
@@ -425,7 +421,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
             }`}
           >
             {isVoiceMode ? <Icon name="moon" className="h-3.5 w-3.5" /> : <Icon name="mic" className="h-3.5 w-3.5" />}
-            {isVoiceMode ? 'GO_SILENT' : 'VOICE_LINK'}
+            {isVoiceMode ? 'STOP_VOICE' : 'VOICE_CHAT'}
           </button>
         </div>
       </div>
@@ -434,67 +430,33 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
       <div className="flex-grow flex flex-col relative overflow-hidden">
         {isVoiceMode && !isSpeechFallback ? (
           <div className="flex-grow flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
-            {/* Immersive Background Effects */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              <div 
-                className="absolute inset-0 bg-indigo-600/5 transition-opacity duration-1000"
-                style={{ opacity: 0.1 + (audioLevel * 0.4) }}
-              />
-              <div 
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[120px] transition-transform duration-500"
-                style={{ transform: `translate(-50%, -50%) scale(${1 + (audioLevel * 2)})` }}
-              />
+              <div className="absolute inset-0 bg-indigo-600/5 transition-opacity duration-1000" style={{ opacity: 0.1 + (audioLevel * 0.4) }} />
             </div>
 
             <div className="relative z-10 flex flex-col items-center gap-12 max-w-lg w-full">
-              {/* Responsive Neural Avatar */}
               <div className="relative group">
                 <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-2xl animate-pulse" />
-                
-                {[...Array(4)].map((_, i) => (
-                  <div 
-                    key={i}
-                    className="absolute inset-0 rounded-full border border-indigo-500/10 transition-all duration-150"
-                    style={{ 
-                      transform: `scale(${1.2 + (i * 0.2) + (audioLevel * (i + 1) * 0.15)})`,
-                      opacity: 0.4 - (i * 0.1),
-                      borderWidth: isSpeaking ? '2px' : '1px'
-                    }}
-                  />
-                ))}
-
                 <div className={`h-48 w-48 md:h-64 md:w-64 rounded-full bg-slate-900 border-2 border-indigo-500/30 flex items-center justify-center relative overflow-hidden shadow-[0_0_50px_rgba(79,70,229,0.3)] transition-transform duration-100 ${isSpeaking ? 'scale-105' : 'scale-100'}`}>
-                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle,white_1px,transparent_1px)] bg-[size:20px_20px]" />
                   <div className="relative z-10 flex flex-col items-center">
-                    <div className={`transition-all duration-150 ${isSpeaking ? 'scale-110' : 'opacity-80'}`}>
-                      <Icon name="logo" className="h-20 w-20 md:h-24 md:w-24 text-indigo-400" />
-                    </div>
+                    <Icon name="logo" className="h-20 w-20 md:h-24 md:w-24 text-indigo-400" />
                   </div>
-                  <div className="absolute inset-x-0 h-1 bg-indigo-500/20 top-0 animate-scanline pointer-events-none" />
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div className="flex flex-col items-center">
                   <span className={`text-[10px] font-mono font-bold uppercase tracking-[0.4em] mb-2 transition-colors duration-500 ${isSpeaking ? 'text-indigo-400' : 'text-slate-500'}`}>
-                    {isLoading ? 'ESTABLISHING_LINK' : isSpeaking ? 'TRANSMITTING' : 'LISTENING'}
+                    {isLoading ? 'ESTABLISHING_ACCESS' : isSpeaking ? 'SPEAKING' : 'LISTENING'}
                   </span>
                   <h3 className="text-3xl md:text-4xl font-mono font-black text-white uppercase tracking-tighter leading-none">
-                    {isLoading ? <Spinner /> : isSpeaking ? 'ANALYZING' : 'IDLE_WAIT'}
+                    {isLoading ? <Spinner /> : isSpeaking ? 'TRANSMITTING' : 'WAITING'}
                   </h3>
                 </div>
-
                 <div className="pt-8">
-                   <VoiceVisualizer level={isSpeaking ? audioLevel : inputAudioLevel} color={isSpeaking ? 'bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.5)]' : 'bg-slate-700'} count={24} />
+                   <VoiceVisualizer level={isSpeaking ? audioLevel : inputAudioLevel} color={isSpeaking ? 'bg-indigo-400' : 'bg-slate-700'} count={24} />
                 </div>
               </div>
-
-              <button 
-                onClick={stopVoiceMode}
-                className="mt-4 text-[10px] font-mono font-bold uppercase tracking-[0.3em] text-slate-500 hover:text-white transition-colors py-2 px-4 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-900/50"
-              >
-                DISCONNECT_LINK
-              </button>
             </div>
           </div>
         ) : (
@@ -507,22 +469,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
                       msg.role === 'user' 
                       ? 'bg-gradient-to-br from-indigo-600 to-indigo-900 text-white rounded-tr-none' 
                       : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200 dark:border-slate-800'
-                    } ${msg.isStreaming ? 'ring-4 ring-indigo-500/20' : ''}`}>
+                    }`}>
                       <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap leading-relaxed font-medium">
                         {msg.text}
-                        {msg.isStreaming && <span className="inline-block h-5 w-2 bg-indigo-500 ml-2 align-middle animate-pulse shadow-[0_0_15px_rgba(99,102,241,1)]"></span>}
                       </div>
-
-                      {msg.role === 'model' && !msg.isStreaming && (
-                        <div className="absolute -bottom-2 -right-10 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                          <button
-                            onClick={() => currentlySpeakingId === i ? stopAllAudio() : generateAndPlaySpeech(msg.text, i)}
-                            className={`p-2.5 rounded-full border transition-all shadow-lg ${currentlySpeakingId === i ? 'bg-indigo-600 text-white border-indigo-500 scale-110' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-indigo-600'}`}
-                          >
-                            <Icon name={currentlySpeakingId === i ? "logo" : "volume"} className={`h-4 w-4 ${currentlySpeakingId === i ? 'animate-pulse' : ''}`} />
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -536,15 +486,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Query_input >"
-                  className="flex-grow bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-8 py-5 text-sm font-mono focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all text-slate-900 dark:text-white shadow-xl"
+                  placeholder="Enter message..."
+                  className="flex-grow bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-8 py-5 text-sm font-mono focus:outline-none shadow-xl"
                   disabled={isLoading}
                 />
-                <button
-                  type="submit"
-                  disabled={!input.trim() || isLoading}
-                  className="p-5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 text-white rounded-2xl shadow-xl transition-all active:scale-95"
-                >
+                <button type="submit" disabled={!input.trim() || isLoading} className="p-5 bg-indigo-600 hover:bg-indigo-500 rounded-2xl shadow-xl transition-all">
                   {isLoading ? <Spinner /> : <Icon name="send" className="h-6 w-6" />}
                 </button>
               </form>
@@ -552,21 +498,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
           </div>
         )}
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.1); border-radius: 10px; }
-        
-        @keyframes scanline {
-          0% { top: 0; opacity: 0; }
-          50% { opacity: 0.5; }
-          100% { top: 100%; opacity: 0; }
-        }
-        .animate-scanline {
-          animation: scanline 4s linear infinite;
-        }
-      `}} />
     </div>
   );
 };

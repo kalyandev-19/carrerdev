@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface CardProps {
@@ -5,7 +6,6 @@ interface CardProps {
   description: string;
   icon: React.ReactNode;
   onClick: () => void;
-  // Added optional className to allow custom styling from parent components
   className?: string;
 }
 
@@ -13,14 +13,13 @@ const Card: React.FC<CardProps> = ({ title, description, icon, onClick, classNam
   return (
     <div
       onClick={onClick}
-      // Apply passed className or fallback to default background colors to prevent style conflicts
-      className={`${className || 'bg-white dark:bg-slate-800'} rounded-xl p-6 flex flex-col items-start cursor-pointer transition-all duration-300 border border-slate-100 dark:border-slate-700 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/20 transform hover:-translate-y-1`}
+      className={`group p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 cursor-pointer transition-all duration-300 hover:shadow-xl hover:border-indigo-500/30 dark:hover:border-indigo-500/30 hover:-translate-y-1 ${className}`}
     >
-      <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-lg text-indigo-600 dark:text-sky-400 mb-4">
+      <div className="inline-flex bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-indigo-600 dark:text-indigo-400 mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300 shadow-sm">
         {icon}
       </div>
-      <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
-      <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{description}</p>
+      <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">{title}</h3>
+      <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed font-medium">{description}</p>
     </div>
   );
 };
