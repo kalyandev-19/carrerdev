@@ -247,7 +247,7 @@ const JobFinder: React.FC<JobFinderProps> = ({ user }) => {
                                 <Icon name="network" className="h-6 w-6" />
                             </div>
                             <div>
-                                <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-lg">LinkedIn API Bridge</h4>
+                                <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-tight text-lg">Connect to LinkedIn</h4>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">Authorize access to fetch real-time LinkedIn listings</p>
                             </div>
                         </div>

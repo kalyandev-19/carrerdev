@@ -33,7 +33,7 @@ const NavLink: React.FC<{
   return (
     <button
       onClick={() => navigateTo(page)}
-      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+      className={`px-4 py-2 rounded-xl text-[10px] font-mono font-bold uppercase tracking-widest transition-all duration-300 ${
         isActive
           ? `${colorMap[activeColor]} shadow-lg scale-105 border border-white/10`
           : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
@@ -46,52 +46,55 @@ const NavLink: React.FC<{
 
 const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout, onShowLogin, isDark, toggleTheme }) => {
   const initials = user.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-  const isGuest = user.id.startsWith('guest_');
+  const isGuest = user.id.startsWith('dev_') || user.id.startsWith('guest_');
 
   return (
     <header className="bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300 shadow-sm">
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          <div className="flex items-center cursor-pointer group" onClick={() => navigateTo(Page.Home)}>
-            <div className="bg-gradient-to-tr from-fuchsia-500 to-indigo-600 p-2.5 rounded-2xl shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
-              <Icon name="logo" className="h-6 w-6 text-white" />
+          <div className="flex items-center cursor-pointer group shrink-0" onClick={() => navigateTo(Page.Home)}>
+            <div className="bg-slate-900 dark:bg-slate-100 p-2 rounded-lg group-hover:bg-indigo-600 dark:group-hover:bg-indigo-400 transition-colors">
+              <Icon name="logo" className="h-5 w-5 text-white dark:text-slate-900" />
             </div>
-            <span className="ml-4 text-2xl font-black text-slate-900 dark:text-white hidden sm:block uppercase tracking-tighter">CareerDev</span>
+            <div className="ml-3 flex flex-col justify-center font-mono">
+              <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Career</span>
+              <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter leading-none">Dev_</span>
+            </div>
           </div>
           
-          <div className="hidden md:flex items-center space-x-2">
+          <div className="hidden lg:flex items-center space-x-1">
             <NavLink page={Page.Chat} currentPage={currentPage} navigateTo={navigateTo} activeColor="fuchsia">Assistant</NavLink>
-            <NavLink page={Page.IndustryQA} currentPage={currentPage} navigateTo={navigateTo} activeColor="amber">Expert Q&A</NavLink>
-            <NavLink page={Page.ResumeBuilder} currentPage={currentPage} navigateTo={navigateTo} activeColor="indigo">Builder</NavLink>
-            <NavLink page={Page.ResumeAnalyzer} currentPage={currentPage} navigateTo={navigateTo} activeColor="sky">Analyzer</NavLink>
-            <NavLink page={Page.JobFinder} currentPage={currentPage} navigateTo={navigateTo} activeColor="emerald">Opportunities</NavLink>
+            <NavLink page={Page.IndustryQA} currentPage={currentPage} navigateTo={navigateTo} activeColor="amber">Analyzer</NavLink>
+            <NavLink page={Page.ResumeBuilder} currentPage={currentPage} navigateTo={navigateTo} activeColor="indigo">Architect</NavLink>
+            <NavLink page={Page.ResumeAnalyzer} currentPage={currentPage} navigateTo={navigateTo} activeColor="sky">Scanner</NavLink>
+            <NavLink page={Page.JobFinder} currentPage={currentPage} navigateTo={navigateTo} activeColor="emerald">Deployment</NavLink>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={toggleTheme}
-              className="p-3 rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all hover:scale-110 active:rotate-12"
+              className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all hover:scale-110 active:rotate-12"
               aria-label="Toggle Theme"
             >
               {isDark ? <Icon name="sun" className="h-5 w-5" /> : <Icon name="moon" className="h-5 w-5" />}
             </button>
 
-            <div className="hidden sm:flex flex-col items-end mr-2">
-              <span className="text-[10px] font-black text-slate-900 dark:text-white leading-none uppercase tracking-widest">
-                {isGuest ? 'GUEST' : user.fullName.toUpperCase()}
+            <div className="hidden sm:flex flex-col items-end mr-1 font-mono">
+              <span className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight uppercase tracking-widest truncate max-w-[120px]">
+                {isGuest ? 'GUEST_USER' : user.fullName.toUpperCase()}
               </span>
-              <div className="flex gap-2 mt-1">
+              <div className="flex gap-2">
                 {isGuest ? (
                   <button 
                     onClick={onShowLogin}
-                    className="text-[9px] text-fuchsia-600 dark:text-fuchsia-400 hover:underline uppercase font-black tracking-widest"
+                    className="text-[9px] text-fuchsia-600 dark:text-fuchsia-400 hover:underline uppercase font-bold tracking-widest"
                   >
                     Authenticate
                   </button>
                 ) : (
                   <button 
                     onClick={onLogout}
-                    className="text-[9px] text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors uppercase font-black tracking-widest"
+                    className="text-[9px] text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors uppercase font-bold tracking-widest"
                   >
                     Disconnect
                   </button>
@@ -99,12 +102,12 @@ const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout
               </div>
             </div>
             
-            <div className={`h-11 w-11 rounded-2xl flex items-center justify-center text-white font-black text-sm shadow-xl transition-all hover:scale-105 ${
+            <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-white font-mono font-black text-xs shadow-xl transition-all hover:scale-105 shrink-0 ${
               isGuest 
-              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 shadow-none' 
-              : 'bg-gradient-to-br from-fuchsia-500 to-indigo-600 shadow-indigo-500/30'
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 shadow-none border border-slate-200 dark:border-slate-700' 
+              : 'bg-indigo-600 shadow-indigo-500/30'
             }`}>
-              {isGuest ? <Icon name="network" className="h-6 w-6" /> : initials}
+              {isGuest ? 'G' : initials}
             </div>
           </div>
         </div>

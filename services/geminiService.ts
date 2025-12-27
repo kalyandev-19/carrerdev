@@ -1,6 +1,6 @@
 
-import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { JobListing, GroundingSource, JobSearchResponse, ResumeData } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
+import { JobListing, GroundingSource, JobSearchResponse, ResumeData } from "../types.ts";
 
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
