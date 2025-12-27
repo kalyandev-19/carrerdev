@@ -58,6 +58,7 @@ async function decodeAudioData(
 const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isSpeechFallback, setIsSpeechFallback] = useState(false);
+  const [isAutoSpeak, setIsAutoSpeak] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -67,6 +68,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentlySpeakingId, setCurrentlySpeakingId] = useState<number | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
   const [inputAudioLevel, setInputAudioLevel] = useState(0);
 
@@ -97,11 +99,24 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const stopAllAudio = useCallback(() => {
+    sourcesRef.current.forEach(source => {
+      try { source.stop(); } catch (e) {}
+    });
+    sourcesRef.current.clear();
+    setIsSpeaking(false);
+    setCurrentlySpeakingId(null);
+    setAudioLevel(0);
+  }, []);
+
   // Fallback TTS Logic using Gemini TTS model
-  const generateAndPlaySpeech = async (text: string) => {
+  const generateAndPlaySpeech = async (text: string, messageIndex?: number) => {
     if (!text.trim()) return;
     
+    stopAllAudio();
     setIsSpeaking(true);
+    if (messageIndex !== undefined) setCurrentlySpeakingId(messageIndex);
+
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
@@ -111,7 +126,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' }, // Use 'Kore' for a professional mentor tone
+              prebuiltVoiceConfig: { voiceName: 'Kore' }, 
             },
           },
         },
@@ -124,12 +139,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
         }
         
         const ctx = outputAudioContextRef.current;
+        if (ctx.state === 'suspended') await ctx.resume();
+        
         const audioBuffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
         
         const source = ctx.createBufferSource();
         source.buffer = audioBuffer;
         
-        // Connect to visualizer for fallback mode too
         if (!analyzerRef.current) {
           analyzerRef.current = ctx.createAnalyser();
           analyzerRef.current.fftSize = 256;
@@ -139,12 +155,15 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
         
         source.onended = () => {
           setIsSpeaking(false);
+          setCurrentlySpeakingId(null);
           setAudioLevel(0);
+          sourcesRef.current.delete(source);
         };
         
+        sourcesRef.current.add(source);
         source.start(0);
         
-        // Start visualization loop for fallback
+        // Start visualization loop
         const updateFallbackVisuals = () => {
           if (analyzerRef.current && isSpeaking) {
             const dataArray = new Uint8Array(analyzerRef.current.frequencyBinCount);
@@ -157,8 +176,9 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
         updateFallbackVisuals();
       }
     } catch (err) {
-      console.error("TTS Fallback failed:", err);
+      console.error("TTS failed:", err);
       setIsSpeaking(false);
+      setCurrentlySpeakingId(null);
     }
   };
 
@@ -166,17 +186,14 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   const stopVoiceMode = useCallback(() => {
     setIsVoiceMode(false);
     setIsSpeechFallback(false);
-    setIsSpeaking(false);
+    stopAllAudio();
     if (liveSessionRef.current) {
       liveSessionRef.current = null;
     }
-    sourcesRef.current.forEach(s => s.stop());
-    sourcesRef.current.clear();
     if (audioContextRef.current) audioContextRef.current.close();
     if (outputAudioContextRef.current) outputAudioContextRef.current.close();
-    setAudioLevel(0);
     setInputAudioLevel(0);
-  }, []);
+  }, [stopAllAudio]);
 
   const startVoiceMode = async () => {
     try {
@@ -256,7 +273,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
           onclose: () => stopVoiceMode(),
           onerror: (e) => {
             console.error("Live session error:", e);
-            // Initiate fallback logic
             setIsSpeechFallback(true);
             setIsLoading(false);
           },
@@ -295,7 +311,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
       console.warn("Real-time voice unavailable, switching to speech fallback.");
       setIsSpeechFallback(true);
       setIsLoading(false);
-      // We don't call stopVoiceMode here yet because we want to stay in the "voice UI" state
     }
   };
 
@@ -329,13 +344,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
 
       setMessages(prev => {
         const newMsgs = [...prev];
-        newMsgs[newMsgs.length - 1] = { ...newMsgs[newMsgs.length - 1], isStreaming: false };
+        const lastIdx = newMsgs.length - 1;
+        newMsgs[lastIdx] = { ...newMsgs[lastIdx], isStreaming: false };
         return newMsgs;
       });
 
-      // If in speech fallback mode, trigger TTS after receiving full text
-      if (isSpeechFallback) {
-        generateAndPlaySpeech(fullText);
+      if (isSpeechFallback || isAutoSpeak) {
+        generateAndPlaySpeech(fullText, messages.length + 1);
       }
 
     } catch (error) {
@@ -346,32 +361,43 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto min-h-[500px] h-[calc(100vh-10rem)] flex flex-col bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500 mb-8">
+    <div className="max-w-4xl mx-auto min-h-[500px] h-[calc(100vh-10rem)] flex flex-col bg-white dark:bg-slate-950/80 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-500 mb-8 backdrop-blur-xl">
       {/* Header */}
-      <div className="bg-slate-50 dark:bg-slate-800/80 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="bg-sky-500/10 p-2 rounded-xl text-sky-500">
+      <div className="bg-slate-50/50 dark:bg-slate-900/50 px-8 py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="bg-gradient-to-tr from-fuchsia-500 to-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
             <Icon name="chat" className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">Career Assistant</h2>
-            <p className="text-[10px] font-black uppercase tracking-widest text-sky-500 flex items-center gap-1.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${isVoiceMode && !isSpeechFallback ? 'bg-green-500 animate-pulse' : isSpeechFallback ? 'bg-amber-500' : 'bg-slate-300'}`}></span>
-              {isSpeechFallback ? 'Speech Fallback Active' : isVoiceMode ? 'Live Voice Mode' : 'Gemini 3 Pro Online'}
+            <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight uppercase tracking-tight">Career Assistant</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-500 flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${isVoiceMode && !isSpeechFallback ? 'bg-emerald-500 animate-pulse' : isSpeechFallback || isAutoSpeak ? 'bg-amber-500' : 'bg-slate-400'}`}></span>
+              {isSpeechFallback ? 'Speech Fallback Active' : isVoiceMode ? 'Live Voice Mode' : isAutoSpeak ? 'Auto-speak ON' : 'Gemini 3 Pro Online'}
             </p>
           </div>
         </div>
-        <button 
-          onClick={isVoiceMode ? stopVoiceMode : startVoiceMode}
-          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 border ${
-            isVoiceMode 
-            ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' 
-            : 'bg-sky-50 text-sky-600 border-sky-200 hover:bg-sky-100'
-          }`}
-        >
-          {isVoiceMode ? <Icon name="send" className="h-3 w-3" /> : <Icon name="mic" className="h-3 w-3" />}
-          {isVoiceMode ? 'Exit Voice' : 'Voice Assistant'}
-        </button>
+        <div className="flex items-center gap-3">
+          {!isVoiceMode && (
+            <button
+              onClick={() => setIsAutoSpeak(!isAutoSpeak)}
+              className={`p-2.5 rounded-xl transition-all border shadow-sm ${isAutoSpeak ? 'bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200' : 'text-slate-400 border-transparent hover:bg-slate-100'}`}
+              title={isAutoSpeak ? "Disable Auto-speak" : "Enable Auto-speak"}
+            >
+              <Icon name="volume" className={`h-4 w-4 ${isAutoSpeak ? 'animate-pulse' : ''}`} />
+            </button>
+          )}
+          <button 
+            onClick={isVoiceMode ? stopVoiceMode : startVoiceMode}
+            className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border shadow-sm ${
+              isVoiceMode 
+              ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100' 
+              : 'bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100'
+            }`}
+          >
+            {isVoiceMode ? <Icon name="send" className="h-3 w-3" /> : <Icon name="mic" className="h-3 w-3" />}
+            {isVoiceMode ? 'Exit Voice' : 'Voice Mode'}
+          </button>
+        </div>
       </div>
 
       {/* Main Area */}
@@ -379,7 +405,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
         {isVoiceMode ? (
           <div className="flex-grow flex flex-col items-center justify-center p-8 text-center space-y-12 animate-in fade-in zoom-in-95 overflow-y-auto">
             {isSpeechFallback && (
-              <div className="absolute top-4 left-4 right-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 p-3 rounded-xl z-20 animate-in slide-in-from-top-4 duration-500">
+              <div className="absolute top-4 left-4 right-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 p-3 rounded-2xl z-20 animate-in slide-in-from-top-4 duration-500">
                 <p className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center justify-center gap-2">
                   <Icon name="volume" className="h-3.5 w-3.5" />
                   Live Voice Unavailable. Using Speech-Enabled Text mode.
@@ -391,7 +417,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
               {[1, 2, 3].map(i => (
                 <div 
                   key={`out-${i}`}
-                  className="absolute inset-0 rounded-full bg-sky-500/20"
+                  className="absolute inset-0 rounded-full bg-indigo-500/20"
                   style={{ 
                     transform: `scale(${1 + (audioLevel * i * 0.5)})`,
                     opacity: isSpeaking ? 0.4 : 0,
@@ -412,33 +438,33 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
                 />
               ))}
               
-              <div className={`h-40 w-40 md:h-48 md:w-48 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 shadow-2xl flex items-center justify-center relative z-10 transition-transform duration-75`}
-                   style={{ transform: `scale(${1 + (isSpeaking ? audioLevel * 0.15 : inputAudioLevel * 0.1)})` }}>
-                <div className="bg-white/10 backdrop-blur-md rounded-full p-6 border border-white/20">
-                  <Icon name="logo" className={`h-12 w-12 md:h-16 md:w-16 text-white ${isSpeaking ? 'animate-bounce' : ''}`} />
+              <div className={`h-40 w-40 md:h-56 md:w-56 rounded-full bg-gradient-to-br from-fuchsia-500 via-indigo-600 to-sky-500 shadow-2xl flex items-center justify-center relative z-10 transition-transform duration-75`}
+                   style={{ transform: `scale(${1 + (isSpeaking ? audioLevel * 0.2 : inputAudioLevel * 0.15)})` }}>
+                <div className="bg-white/10 backdrop-blur-xl rounded-full p-8 border border-white/20">
+                  <Icon name="logo" className={`h-16 w-16 md:h-24 md:w-24 text-white drop-shadow-lg ${isSpeaking ? 'animate-bounce' : ''}`} />
                 </div>
               </div>
             </div>
 
             <div className="space-y-4 max-w-sm">
-              <h3 className={`text-xl md:text-2xl font-black uppercase tracking-tighter ${isSpeaking ? 'text-indigo-600 dark:text-sky-400' : 'text-slate-900 dark:text-white'}`}>
-                {isLoading ? 'Connecting...' : isSpeaking ? 'Assistant Speaking' : isSpeechFallback ? 'Ready for Input' : 'Listening to You'}
+              <h3 className={`text-2xl md:text-3xl font-black uppercase tracking-tighter ${isSpeaking ? 'text-indigo-600 dark:text-sky-400' : 'text-slate-900 dark:text-white'}`}>
+                {isLoading ? 'Connecting...' : isSpeaking ? 'Assistant Speaking' : isSpeechFallback ? 'Ready for Input' : 'Listening...'}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                {isLoading ? 'Setting up low-latency voice session' : isSpeaking ? 'I am responding to your query...' : isSpeechFallback ? 'Type below and I will speak back!' : 'I am listening. Go ahead, ask me anything!'}
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-bold uppercase tracking-widest opacity-60">
+                {isLoading ? 'Low-latency session setup' : isSpeaking ? 'Transmitting career data' : isSpeechFallback ? 'Type and I will respond' : 'Speak clearly into your mic'}
               </p>
               
               {!isLoading && (
-                <div className="flex justify-center gap-1.5 h-8 items-center">
-                  {[...Array(16)].map((_, i) => (
+                <div className="flex justify-center gap-2 h-10 items-center">
+                  {[...Array(20)].map((_, i) => (
                     <div 
                       key={i}
-                      className={`w-1 rounded-full transition-all duration-75 ${isSpeaking ? 'bg-sky-500' : isSpeechFallback ? 'bg-slate-200 dark:bg-slate-700' : 'bg-emerald-500'}`}
+                      className={`w-1.5 rounded-full transition-all duration-75 ${isSpeaking ? 'bg-indigo-500' : isSpeechFallback ? 'bg-slate-200 dark:bg-slate-800' : 'bg-emerald-500'}`}
                       style={{ 
                         height: isSpeaking 
-                          ? `${20 + Math.random() * 60 * audioLevel}%` 
-                          : isSpeechFallback ? '10%' : `${10 + Math.random() * 50 * inputAudioLevel}%`,
-                        opacity: isSpeaking ? 1 : (inputAudioLevel > 0.05 ? 0.8 : 0.2)
+                          ? `${30 + Math.random() * 70 * audioLevel}%` 
+                          : isSpeechFallback ? '10%' : `${15 + Math.random() * 60 * inputAudioLevel}%`,
+                        opacity: isSpeaking ? 1 : (inputAudioLevel > 0.05 ? 0.8 : 0.1)
                       }}
                     />
                   ))}
@@ -446,58 +472,69 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
               )}
             </div>
 
-            {/* In fallback mode, we need the input visible even in the "center stage" view */}
             {isSpeechFallback && (
               <div className="w-full max-w-md pt-8">
-                <form onSubmit={sendMessage} className="relative flex items-center gap-2">
+                <form onSubmit={sendMessage} className="relative flex items-center gap-3">
                   <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Type your message..."
-                    className="flex-grow bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-slate-900 dark:text-white shadow-xl"
+                    className="flex-grow bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all text-slate-900 dark:text-white shadow-xl"
                     disabled={isLoading}
                   />
                   <button
                     type="submit"
                     disabled={!input.trim() || isLoading}
-                    className="p-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-xl shadow-lg transition-all active:scale-95"
+                    className="p-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-2xl shadow-xl transition-all active:scale-90"
                   >
-                    <Icon name="send" className="h-5 w-5" />
+                    <Icon name="send" className="h-6 w-6" />
                   </button>
                 </form>
               </div>
             )}
           </div>
         ) : (
-          <div className="flex-grow overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar scroll-smooth">
+          <div className="flex-grow overflow-y-auto p-6 md:p-10 space-y-8 custom-scrollbar scroll-smooth">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  <div className={`px-4 py-3 rounded-2xl shadow-sm relative overflow-hidden transition-all duration-200 ${
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
+                <div className={`flex flex-col max-w-[90%] md:max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div className={`group relative px-6 py-4 rounded-3xl shadow-xl transition-all duration-300 ${
                     msg.role === 'user' 
-                    ? 'bg-indigo-600 text-white rounded-tr-none' 
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200 dark:border-slate-700'
-                  } ${msg.isStreaming ? 'animate-message-streaming shadow-indigo-500/20' : ''}`}>
-                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap relative z-10">
+                    ? 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white rounded-tr-none shadow-indigo-500/10' 
+                    : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200 dark:border-slate-800 shadow-slate-900/5'
+                  } ${msg.isStreaming ? 'animate-bubble-pulse ring-4 ring-indigo-500/20' : ''}`}>
+                    <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap relative z-10 leading-relaxed font-medium">
                       {msg.text}
-                      {msg.isStreaming && <span className="inline-block h-[1.1em] w-[0.4em] bg-sky-500 ml-1.5 align-middle animate-cursor-blink shadow-[0_0_8px_rgba(14,165,233,0.8)]"></span>}
+                      {msg.isStreaming && <span className="inline-block h-5 w-2 bg-indigo-500 ml-2 align-middle animate-cursor-blink shadow-[0_0_15px_rgba(99,102,241,1)]"></span>}
                     </div>
+
+                    {msg.role === 'model' && !msg.isStreaming && (
+                      <div className="absolute -bottom-2 -right-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                        <button
+                          onClick={() => currentlySpeakingId === i ? stopAllAudio() : generateAndPlaySpeech(msg.text, i)}
+                          className={`p-2.5 rounded-full border transition-all shadow-lg ${currentlySpeakingId === i ? 'bg-indigo-600 text-white border-indigo-500 scale-110' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 hover:text-indigo-600'}`}
+                        >
+                          <Icon name={currentlySpeakingId === i ? "logo" : "volume"} className={`h-4 w-4 ${currentlySpeakingId === i ? 'animate-pulse' : ''}`} />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-600 uppercase mt-1 px-2 tracking-tighter">
-                    {msg.role === 'user' ? 'You' : 'Assistant'}
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mt-2 px-3 tracking-widest">
+                    {msg.role === 'user' ? 'You' : 'CareerDev Assistant'}
                   </span>
                 </div>
               </div>
             ))}
             {isLoading && messages[messages.length - 1].role === 'user' && (
               <div className="flex justify-start animate-in fade-in duration-300">
-                <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-2xl rounded-tl-none border border-slate-200 dark:border-slate-700 flex items-center gap-2">
-                  <div className="flex gap-1.5 items-center">
-                    <div className="h-2 w-2 bg-sky-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                    <div className="h-2 w-2 bg-sky-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="bg-white dark:bg-slate-900 px-6 py-4 rounded-3xl rounded-tl-none border border-slate-200 dark:border-slate-800 flex items-center gap-3 shadow-xl">
+                  <div className="flex gap-2 items-center">
+                    <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="h-2 w-2 bg-fuchsia-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                     <div className="h-2 w-2 bg-sky-500 rounded-full animate-bounce"></div>
                   </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Processing...</span>
                 </div>
               </div>
             )}
@@ -508,48 +545,49 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
 
       {/* Input Area (Only for Text Mode) */}
       {!isVoiceMode && (
-        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
-          <form onSubmit={sendMessage} className="relative flex items-center gap-2 group">
+        <div className="p-6 md:p-8 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 flex-shrink-0 backdrop-blur-md">
+          <form onSubmit={sendMessage} className="relative flex items-center gap-4 group max-w-5xl mx-auto">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your message here..."
-              className="flex-grow bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-slate-900 dark:text-white"
+              placeholder="Ask for advice, resume tips, or interview help..."
+              className="flex-grow bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-8 py-5 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all text-slate-900 dark:text-white shadow-xl dark:shadow-black/20"
               disabled={isLoading}
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="p-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-xl shadow-lg transition-all active:scale-95"
+              className="p-5 bg-indigo-600 hover:bg-fuchsia-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-2xl shadow-xl shadow-indigo-500/20 transition-all active:scale-95 group-hover:rotate-1"
             >
-              {isLoading ? <Spinner /> : <Icon name="send" className="h-5 w-5" />}
+              {isLoading ? <Spinner /> : <Icon name="send" className="h-6 w-6" />}
             </button>
           </form>
         </div>
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.1); border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); }
         
         @keyframes cursor-blink {
           0%, 100% { opacity: 1; transform: scaleY(1); }
-          50% { opacity: 0; transform: scaleY(0.8); }
+          50% { opacity: 0; transform: scaleY(0.7); }
         }
         
         .animate-cursor-blink {
-          animation: cursor-blink 0.8s step-end infinite;
+          animation: cursor-blink 0.6s step-end infinite;
         }
 
-        @keyframes message-streaming {
-          0% { transform: scale(0.995) translateY(2px); opacity: 0.95; }
-          100% { transform: scale(1) translateY(0); opacity: 1; }
+        @keyframes bubble-pulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.05); }
+          50% { transform: scale(1.005); box-shadow: 0 15px 25px -5px rgba(99, 102, 241, 0.15); }
         }
 
-        .animate-message-streaming {
-          animation: message-streaming 0.3s ease-out forwards;
+        .animate-bubble-pulse {
+          animation: bubble-pulse 1.5s ease-in-out infinite;
         }
       `}} />
     </div>

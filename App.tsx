@@ -17,114 +17,101 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
   const [stats, setStats] = useState({ jobs: 0, resumeComplete: 0 });
 
   useEffect(() => {
-    const savedJobs = databaseService.getSavedJobs(user.id).length;
-    const resume = databaseService.getResume(user.id);
-    let completion = 0;
-    if (resume) {
-      if (resume.summary) completion += 20;
-      if (resume.experience.length > 0) completion += 40;
-      if (resume.education.length > 0) completion += 30;
-      if (resume.skills) completion += 10;
-    }
-    setStats({ jobs: savedJobs, resumeComplete: completion });
+    const loadStats = async () => {
+      const savedJobs = (await databaseService.getSavedJobs(user.id)).length;
+      const resume = await databaseService.getResume(user.id);
+      let completion = 0;
+      if (resume) {
+        if (resume.summary) completion += 20;
+        if (resume.experience.length > 0) completion += 40;
+        if (resume.education.length > 0) completion += 30;
+        if (resume.skills) completion += 10;
+      }
+      setStats({ jobs: savedJobs, resumeComplete: completion });
+    };
+    loadStats();
   }, [user.id]);
 
   return (
     <div className="py-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="text-center mb-10">
-        <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">
-          Accelerate your <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-indigo-500">CareerDev</span>
+      <div className="text-center mb-16">
+        <h1 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white mb-6 tracking-tight leading-[1.1]">
+          Launch your <span className="text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-indigo-500 to-sky-500 animate-gradient-x">CareerDev</span>
         </h1>
         
-        {/* Stats bar */}
-        <div className="flex flex-wrap justify-center gap-3 mt-8">
-          <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-full flex items-center gap-2 text-xs font-bold shadow-sm">
-             <div className="h-2 w-2 rounded-full bg-sky-500"></div>
-             <span className="text-slate-500 dark:text-slate-400">SAVED JOBS:</span>
-             <span className="text-slate-900 dark:text-white">{stats.jobs}</span>
-          </div>
-          <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-full flex items-center gap-2 text-xs font-bold shadow-sm">
-             <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-             <span className="text-slate-500 dark:text-slate-400">RESUME COMPLETION:</span>
-             <span className="text-slate-900 dark:text-white">{stats.resumeComplete}%</span>
-          </div>
-          <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-full flex items-center gap-2 text-xs font-bold shadow-sm">
-             <div className="h-2 w-2 rounded-full bg-amber-500"></div>
-             <span className="text-slate-500 dark:text-slate-400">AI SESSIONS:</span>
-             <span className="text-slate-900 dark:text-white">Active</span>
+        <div className="flex flex-col items-center gap-8">
+          <button 
+            onClick={() => navigateTo(Page.ResumeBuilder)}
+            className="group relative px-10 py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase tracking-[0.2em] text-sm rounded-2xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-2xl shadow-indigo-500/20 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <span className="relative z-10 flex items-center gap-3 group-hover:text-white">
+              Get Started
+              <Icon name="send" className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </span>
+          </button>
+
+          <div className="flex flex-wrap justify-center gap-4 mt-4">
+            <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-sky-200 dark:border-sky-900/50 px-5 py-2.5 rounded-2xl flex items-center gap-2 text-[10px] font-black tracking-widest shadow-lg shadow-sky-500/5">
+               <div className="h-2 w-2 rounded-full bg-sky-500 animate-pulse"></div>
+               <span className="text-slate-500 dark:text-slate-400">SAVED JOBS:</span>
+               <span className="text-slate-900 dark:text-white">{stats.jobs}</span>
+            </div>
+            <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-emerald-200 dark:border-emerald-900/50 px-5 py-2.5 rounded-2xl flex items-center gap-2 text-[10px] font-black tracking-widest shadow-lg shadow-emerald-500/5">
+               <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+               <span className="text-slate-500 dark:text-slate-400">COMPLETION:</span>
+               <span className="text-slate-900 dark:text-white">{stats.resumeComplete}%</span>
+            </div>
+            <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-fuchsia-200 dark:border-fuchsia-900/50 px-5 py-2.5 rounded-2xl flex items-center gap-2 text-[10px] font-black tracking-widest shadow-lg shadow-fuchsia-500/5">
+               <div className="h-2 w-2 rounded-full bg-fuchsia-500 animate-ping"></div>
+               <span className="text-slate-500 dark:text-slate-400">AI ENGINE:</span>
+               <span className="text-slate-900 dark:text-white">ACTIVE</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-12">
+      <div className="max-w-6xl mx-auto space-y-16">
         <section>
-          <div className="flex items-center gap-2 mb-6 ml-1">
-            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Primary Toolset</h2>
-            <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
+          <div className="flex items-center gap-4 mb-8">
+            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Core Interaction Tools</h2>
+            <div className="h-px bg-gradient-to-r from-slate-200 dark:from-slate-800 to-transparent flex-grow"></div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <Card
               title="Career Assistant"
-              description="Real-time professional mentoring. Practice interviews or get salary negotiation advice."
+              description="Your personal mentor for technical prep and career strategy."
               icon={<Icon name="chat" />}
               onClick={() => navigateTo(Page.Chat)}
+              className="bg-gradient-to-br from-rose-500 to-orange-500 text-white"
             />
             <Card
               title="Resume Builder"
-              description="Craft a document that beats the ATS. Uses AI to write high-impact bullet points."
+              description="Craft professional documents with real-time AI bullet generation."
               icon={<Icon name="resume" />}
               onClick={() => navigateTo(Page.ResumeBuilder)}
+              className="bg-gradient-to-br from-indigo-600 to-violet-700 text-white"
             />
             <Card
-              title="Opportunity Finder"
-              description="Real-world internships and roles discovered via live web search grounded for today."
+              title="Job Hunter"
+              description="Deep-web search for the latest internships and entry-level roles."
               icon={<Icon name="search" />}
               onClick={() => navigateTo(Page.JobFinder)}
+              className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
             />
-          </div>
-        </section>
-
-        <section>
-          <div className="flex items-center gap-2 mb-6 ml-1">
-            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Career Advancement</h2>
-            <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div 
-              onClick={() => navigateTo(Page.Chat)}
-              className="group bg-gradient-to-br from-rose-50 to-white dark:from-slate-800 dark:to-slate-900 p-6 rounded-2xl border border-rose-100 dark:border-slate-700 cursor-pointer hover:shadow-xl transition-all"
-            >
-              <div className="bg-rose-500/10 p-3 rounded-xl text-rose-600 mb-4 w-fit group-hover:scale-110 transition-transform">
-                <Icon name="interview" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Mock Interview</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Run a simulated 15-minute technical or behavioral interview with instant feedback.</p>
-            </div>
-            
-            <div 
-              onClick={() => navigateTo(Page.Chat)}
-              className="group bg-gradient-to-br from-emerald-50 to-white dark:from-slate-800 dark:to-slate-900 p-6 rounded-2xl border border-emerald-100 dark:border-slate-700 cursor-pointer hover:shadow-xl transition-all"
-            >
-              <div className="bg-emerald-500/10 p-3 rounded-xl text-emerald-600 mb-4 w-fit group-hover:scale-110 transition-transform">
-                <Icon name="roadmap" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Skill Roadmap</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Generate a step-by-step learning path to master the tech stack for your target role.</p>
-            </div>
-
-            <div 
-              onClick={() => navigateTo(Page.Chat)}
-              className="group bg-gradient-to-br from-indigo-50 to-white dark:from-slate-800 dark:to-slate-900 p-6 rounded-2xl border border-indigo-100 dark:border-slate-700 cursor-pointer hover:shadow-xl transition-all"
-            >
-              <div className="bg-indigo-500/10 p-3 rounded-xl text-indigo-600 mb-4 w-fit group-hover:scale-110 transition-transform">
-                <Icon name="network" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Network Strategist</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Get cold-email templates and networking scripts tailored to industry professionals.</p>
-            </div>
           </div>
         </section>
       </div>
+      <style>{`
+        @keyframes gradient-x {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .animate-gradient-x {
+          background-size: 200% 200%;
+          animation: gradient-x 15s ease infinite;
+        }
+      `}</style>
     </div>
   );
 };
@@ -142,24 +129,27 @@ const App: React.FC = () => {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    const savedUser = databaseService.getSession();
-    if (savedUser) {
-      setCurrentUser(savedUser);
-    } else {
-      const guestId = localStorage.getItem('career_launchpad_guest_id') || ('guest_' + Math.random().toString(36).substr(2, 5));
-      localStorage.setItem('career_launchpad_guest_id', guestId);
-      
-      const guestUser: User = {
-        id: guestId,
-        email: 'guest@careerdev.ai',
-        fullName: 'Guest Professional'
-      };
-      setCurrentUser(guestUser);
-    }
+    const initApp = async () => {
+      const savedUser = await databaseService.getSession();
+      if (savedUser) {
+        setCurrentUser(savedUser);
+      } else {
+        const guestId = localStorage.getItem('career_launchpad_guest_id') || ('guest_' + Math.random().toString(36).substr(2, 5));
+        localStorage.setItem('career_launchpad_guest_id', guestId);
+        
+        const guestUser: User = {
+          id: guestId,
+          email: 'guest@careerdev.ai',
+          fullName: 'Guest Professional'
+        };
+        setCurrentUser(guestUser);
+      }
 
-    const savedTheme = localStorage.getItem('launchpad_theme');
-    setIsDark(savedTheme !== 'light');
-    setInitialized(true);
+      const savedTheme = localStorage.getItem('launchpad_theme');
+      setIsDark(savedTheme !== 'light');
+      setInitialized(true);
+    };
+    initApp();
   }, []);
 
   useEffect(() => {
@@ -178,14 +168,15 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  const handleLogin = (user: User) => {
+  const handleLogin = async (user: User) => {
     setCurrentUser(user);
     setAuthView(AuthView.App);
     setCurrentPage(Page.Home);
+    await databaseService.setSession(user);
   };
 
-  const handleLogout = () => {
-    databaseService.setSession(null);
+  const handleLogout = async () => {
+    await databaseService.setSession(null);
     const guestId = localStorage.getItem('career_launchpad_guest_id') || ('guest_' + Math.random().toString(36).substr(2, 5));
     const guestUser: User = {
       id: guestId,
@@ -241,7 +232,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`${isDark ? 'dark' : ''} min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300`}>
+    <div className={`${isDark ? 'dark' : ''} min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300`}>
       <div className="flex flex-col min-h-screen">
         {currentUser && (
           <Header 

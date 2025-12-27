@@ -5,13 +5,16 @@ interface CardProps {
   description: string;
   icon: React.ReactNode;
   onClick: () => void;
+  // Added optional className to allow custom styling from parent components
+  className?: string;
 }
 
-const Card: React.FC<CardProps> = ({ title, description, icon, onClick }) => {
+const Card: React.FC<CardProps> = ({ title, description, icon, onClick, className = '' }) => {
   return (
     <div
       onClick={onClick}
-      className="bg-white dark:bg-slate-800 rounded-xl p-6 flex flex-col items-start cursor-pointer transition-all duration-300 border border-slate-100 dark:border-slate-700 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/20 transform hover:-translate-y-1"
+      // Apply passed className or fallback to default background colors to prevent style conflicts
+      className={`${className || 'bg-white dark:bg-slate-800'} rounded-xl p-6 flex flex-col items-start cursor-pointer transition-all duration-300 border border-slate-100 dark:border-slate-700 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/20 transform hover:-translate-y-1`}
     >
       <div className="bg-slate-100 dark:bg-slate-700 p-3 rounded-lg text-indigo-600 dark:text-sky-400 mb-4">
         {icon}

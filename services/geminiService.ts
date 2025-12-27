@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { JobListing, GroundingSource, JobSearchResponse } from "../types";
+import { JobListing, GroundingSource, JobSearchResponse, ResumeData } from "../types";
 
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
@@ -92,16 +92,32 @@ export const analyzeResumeStream = async function* (content: string | { data: st
   }
 };
 
-export const findJobs = async (role: string, location: string): Promise<JobSearchResponse> => {
+export const findJobs = async (role: string, location: string, isLinkedInOnly: boolean = false, userResume?: ResumeData | null): Promise<JobSearchResponse> => {
   const ai = getAI();
-  const prompt = `Search for 5 real, active job or internship opportunities for "${role}" in "${location}". 
-  Crucially, prioritize results from major job platforms including LinkedIn, Indeed, Glassdoor, and Wellfound (AngelList).
   
-  For each job, provide the output in valid JSON format as defined in the response schema.`;
+  // Specific instruction for LinkedIn Mode
+  const sourceInstruction = isLinkedInOnly 
+    ? "STRICT: ONLY find roles posted on linkedin.com/jobs. Use site:linkedin.com/jobs in your search." 
+    : "Source from LinkedIn, Indeed, Glassdoor.";
+
+  const resumeContext = userResume 
+    ? `User Resume Profile: ${userResume.summary}. Skills: ${userResume.skills}. Calculate a "matchScore" from 0-100 for each job based on this resume.`
+    : "";
+
+  const prompt = `FAST SEARCH: Find 5 real, active ${role} roles in ${location}. 
+  ${sourceInstruction}
+  ${resumeContext}
+  JSON OUTPUT ONLY. 
+  Rules: 
+  1. Description max 150 chars. 
+  2. Max 3 requirements per job. 
+  3. Include direct URLs.
+  4. Include "matchScore" (integer 0-100).
+  5. Include "linkedinInsights" (e.g. "3 alumni work here" or "Top 10% applicant") if isLinkedInOnly is true.`;
   
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: isLinkedInOnly ? "gemini-3-pro-preview" : "gemini-3-flash-preview",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -122,6 +138,8 @@ export const findJobs = async (role: string, location: string): Promise<JobSearc
               },
               sourcePlatform: { type: Type.STRING },
               url: { type: Type.STRING },
+              matchScore: { type: Type.INTEGER },
+              linkedinInsights: { type: Type.STRING },
             },
             required: ["title", "company", "location", "type", "description", "requirements", "sourcePlatform", "url"],
           },
@@ -146,7 +164,7 @@ export const findJobs = async (role: string, location: string): Promise<JobSearc
     return { listings, sources };
     
   } catch (error) {
-    console.error("Error finding jobs:", error);
+    console.error("Error finding jobs fast:", error);
     return { listings: [], sources: [] };
   }
 };

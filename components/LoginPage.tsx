@@ -17,15 +17,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fix: Handled async database calls by making the handler async and awaiting Promise results.
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     // Artificial delay for a more "real" authentication feel
-    setTimeout(() => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    try {
       if (isLogin) {
-        const user = databaseService.findUserByEmail(email);
+        const user = await databaseService.findUserByEmail(email);
         
         if (!user) {
           setError('No account found with this email address.');
@@ -33,38 +36,42 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           setError('Incorrect password. Please try again.');
         } else {
           const authUser = { id: user.id, email: user.email, fullName: user.fullName };
-          databaseService.setSession(authUser);
+          await databaseService.setSession(authUser);
           onLogin(authUser);
         }
       } else {
         if (!email || !password || !fullName) {
           setError('Please fill in all fields to create your account.');
-        } else if (databaseService.findUserByEmail(email)) {
+        } else if (await databaseService.findUserByEmail(email)) {
           setError('An account with this email already exists. Try signing in instead.');
         } else if (password.length < 6) {
           setError('Password must be at least 6 characters long.');
         } else {
-          const newUser = databaseService.createUser(email, password, fullName);
-          databaseService.setSession(newUser);
+          const newUser = await databaseService.createUser(email, password, fullName);
+          await databaseService.setSession(newUser);
           onLogin(newUser);
         }
       }
+    } catch (err) {
+      console.error(err);
+      setError('An error occurred during authentication.');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
-  const handleGuestAccess = () => {
+  // Fix: Updated to async to properly await session persistence before navigating.
+  const handleGuestAccess = async () => {
     setLoading(true);
-    setTimeout(() => {
-      const guestUser: User = {
-        id: 'guest_' + Math.random().toString(36).substr(2, 5),
-        email: 'guest@careerdev.ai',
-        fullName: 'Guest Professional'
-      };
-      databaseService.setSession(guestUser);
-      onLogin(guestUser);
-      setLoading(false);
-    }, 600);
+    await new Promise(resolve => setTimeout(resolve, 600));
+    const guestUser: User = {
+      id: 'guest_' + Math.random().toString(36).substr(2, 5),
+      email: 'guest@careerdev.ai',
+      fullName: 'Guest Professional'
+    };
+    await databaseService.setSession(guestUser);
+    onLogin(guestUser);
+    setLoading(false);
   };
 
   return (
