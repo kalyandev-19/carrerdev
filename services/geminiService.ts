@@ -99,24 +99,27 @@ export const analyzeResumeStream = async function* (content: string | { data: st
 export const findJobs = async (role: string, location: string, isLinkedInOnly: boolean = false, userResume?: ResumeData | null): Promise<JobSearchResponse> => {
   const ai = getAI();
   
-  const sourceInstruction = isLinkedInOnly 
-    ? "STRICT: ONLY find roles posted on linkedin.com/jobs. Use site:linkedin.com/jobs in your search." 
-    : "Source from LinkedIn, Indeed, Glassdoor.";
-
   const resumeContext = userResume 
-    ? `User Resume Profile: ${userResume.summary}. Skills: ${userResume.skills}. Calculate a "matchScore" from 0-100 for each job based on this resume.`
+    ? `User Resume Profile: ${userResume.summary}. Skills: ${userResume.skills}. Use this context to personalize the search and calculate 'matchScore'.`
     : "";
 
-  const prompt = `FAST SEARCH: Find 5 real, active ${role} roles in ${location}. 
-  ${sourceInstruction}
+  const prompt = `SEARCH TASK: Find 5 active, real ${role} job/internship listings in ${location}. 
+  
+  CRITICAL URL INSTRUCTION: 
+  For every job you find, you MUST extract the specific, direct URL to that job posting from your search results. 
+  - DO NOT provide root domains (e.g., "https://linkedin.com").
+  - DO NOT hallucinate URLs.
+  - The "url" field MUST be a deep link to the actual job description or application form.
+  - If you cannot find a direct URL for a specific listing, omit that listing entirely.
+
   ${resumeContext}
-  JSON OUTPUT ONLY. 
+
+  JSON OUTPUT ONLY.
   Rules: 
-  1. Description max 150 chars. 
-  2. Max 3 requirements per job. 
-  3. Include direct URLs.
-  4. Include "matchScore" (integer 0-100).
-  5. Include "linkedinInsights" (e.g. "3 alumni work here" or "Top 10% applicant") if isLinkedInOnly is true.`;
+  1. Description: max 120 chars. 
+  2. Requirements: Exactly 3 specific points. 
+  3. MatchScore: 0-100 based on user profile.
+  4. SourcePlatform: Use the name of the site where the job was found (e.g., "LinkedIn", "Lever", "Greenhouse", "Indeed").`;
   
   try {
     const response = await ai.models.generateContent({
@@ -142,7 +145,6 @@ export const findJobs = async (role: string, location: string, isLinkedInOnly: b
               sourcePlatform: { type: Type.STRING },
               url: { type: Type.STRING },
               matchScore: { type: Type.INTEGER },
-              linkedinInsights: { type: Type.STRING },
             },
             required: ["title", "company", "location", "type", "description", "requirements", "sourcePlatform", "url"],
           },
@@ -155,19 +157,19 @@ export const findJobs = async (role: string, location: string, isLinkedInOnly: b
 
     const listings = listingsRaw.map(listing => ({
       ...listing,
-      id: `${listing.title}-${listing.company}-${listing.location}`.replace(/\s+/g, '-').toLowerCase() + '-' + Math.random().toString(36).substr(2, 9),
+      id: `${listing.title}-${listing.company}`.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substr(2, 5),
     }));
 
     const sources: GroundingSource[] = response.candidates?.[0]?.groundingMetadata?.groundingChunks
       ?.map((chunk: any) => ({
-        title: chunk.web?.title || 'Source',
+        title: chunk.web?.title || 'Job Source',
         uri: chunk.web?.uri || '',
       })).filter((s: GroundingSource) => s.uri) || [];
     
     return { listings, sources };
     
   } catch (error) {
-    console.error("Error finding jobs fast:", error);
+    console.error("Error finding jobs:", error);
     return { listings: [], sources: [] };
   }
 };
