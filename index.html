@@ -94,44 +94,56 @@
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
+      /* Base hidden class for print elements when on screen */
+      .print-only {
+        display: none;
+      }
+
       /* Print Optimization */
       @media print {
-        body {
+        /* Completely hide everything that isn't the resume */
+        header, footer, nav, button, .no-print, form, .glass-panel:not(.print-only) {
+          display: none !important;
+        }
+
+        body, #root, main {
           background: white !important;
           color: black !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          overflow: visible !important;
+          height: auto !important;
         }
-        
-        /* Hide everything by default */
-        body * {
-          visibility: hidden;
-        }
-        
-        /* Show only the resume content */
-        #resume-export-area, #resume-export-area * {
-          visibility: visible;
-        }
-        
-        #resume-export-area {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 210mm; /* A4 width */
-          height: auto;
-          margin: 0;
-          padding: 0;
-          visibility: visible !important;
-          background: white !important;
+
+        /* Show and fix the print area */
+        .print-only {
+          display: block !important;
+          position: relative !important;
+          left: 0 !important;
+          top: 0 !important;
+          margin: 0 auto !important;
+          padding: 15mm !important;
+          width: 210mm !important;
+          min-height: 297mm !important;
           box-shadow: none !important;
-          transform: none !important; /* Remove any 3D transforms */
+          transform: none !important;
+          background: white !important;
+          color: black !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          page-break-after: always;
         }
 
-        /* Prevent background colors/images from being lost in print */
-        * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
+        /* Ensure all nested elements are visible */
+        .print-only * {
+          visibility: visible !important;
+          color: black !important;
         }
 
-        /* Page settings */
+        section {
+          page-break-inside: avoid;
+        }
+
         @page {
           size: A4;
           margin: 0;

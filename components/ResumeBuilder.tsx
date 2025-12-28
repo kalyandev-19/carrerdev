@@ -81,12 +81,15 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
     };
 
     const handleExport = async () => {
-        // Always sync before downloading to ensure PDF content is current
-        if (saveStatus !== 'saved') {
-            try {
-                await handleManualSave();
-            } catch (e) {
-                if (!confirm("Could not sync with cloud. Download local version anyway?")) return;
+        // Force a save to Supabase before printing to ensure the table is updated
+        setIsSaving(true);
+        setSaveStatus('saving');
+        try {
+            await handleManualSave();
+        } catch (e) {
+            if (!confirm("Could not sync with Supabase. Continue with local download?")) {
+                setIsSaving(false);
+                return;
             }
         }
         
@@ -94,11 +97,12 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         const fileName = `${resume.fullName.replace(/\s+/g, '_')}_Resume`;
         document.title = fileName;
         
-        // Trigger browser print dialog
-        window.print();
-        
-        // Reset title after print dialog closes
-        setTimeout(() => { document.title = originalTitle; }, 500);
+        // Wait for state to settle, then print
+        setTimeout(() => {
+            window.print();
+            document.title = originalTitle;
+            setIsSaving(false);
+        }, 300);
     };
 
     useEffect(() => {
@@ -111,7 +115,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                     setLastSaved(new Date(savedResume.updatedAt).toLocaleTimeString());
                 }
                 if (autoPrint) {
-                    // Small delay to ensure rendering completes
                     setTimeout(handleExport, 800);
                 }
             }
@@ -124,7 +127,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         const handleResize = () => {
             if (previewContainerRef.current) {
                 const containerWidth = previewContainerRef.current.offsetWidth;
-                const a4Width = 794;
+                const a4Width = 794; // approx A4 width in px at 96dpi
                 const padding = 64;
                 const newScale = (containerWidth - padding) / a4Width;
                 setPreviewScale(Math.min(newScale, 1.0));
@@ -190,7 +193,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         } catch (error) { console.error(error); } finally { setLoadingSection(null); }
     }, [resume]);
 
-    // This component renders the actual resume content used for both Preview and Print
+    // Core layout for the resume
     const ResumeContent = ({ printMode = false }: { printMode?: boolean }) => (
         <div 
             id={printMode ? "resume-export-area" : undefined}
@@ -200,13 +203,8 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                 padding: '64px', 
                 scale: printMode ? undefined : previewScale,
                 transformOrigin: 'top center',
-                // FIX: 'translateZ' is not a valid CSS property name in standard React.CSSProperties. 
-                // Using 'transform' shorthand with 'translateZ' to fix the TypeScript error while maintaining the 3D effect.
                 transform: printMode ? undefined : "translateZ(50px)",
-                position: printMode ? 'absolute' : 'relative',
-                left: printMode ? '-9999px' : undefined,
-                top: printMode ? '-9999px' : undefined,
-                zIndex: printMode ? -100 : undefined
+                // We let the CSS in index.html handle display and positioning during print
             }}
             className={`bg-white text-slate-900 ${printMode ? 'print-only' : 'shadow-2xl shadow-black/20'}`}
         >
@@ -283,10 +281,13 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
 
     return (
         <div className="py-8">
-            {/* Secret Print Area - Always rendered so window.print() can find it */}
+            {/* 
+               IMPORTANT: This hidden container is what the browser actually "sees" when printing. 
+               The .print-only class in index.html ensures it is hidden on screen and visible in PDF.
+            */}
             <ResumeContent printMode={true} />
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 no-print">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                     <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Resume Studio</h2>
                     <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">3D Precision Workspace</p>
@@ -308,24 +309,26 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                         className="h-12 px-6 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center gap-3 text-indigo-500 font-black uppercase text-[10px] tracking-widest border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition-all disabled:opacity-50"
                     >
                         <Icon name="sun" className={`h-4 w-4 ${isSaving ? 'animate-spin' : ''}`} />
-                        Sync to Cloud
+                        Sync to Supabase
                     </button>
 
-                    <Button onClick={handleExport} className="h-12 px-8 btn-3d bg-indigo-600 rounded-2xl flex items-center gap-3 active:scale-95 shadow-indigo-500/20">
+                    <Button 
+                        onClick={handleExport} 
+                        isLoading={isSaving && saveStatus === 'saving'}
+                        className="h-12 px-8 btn-3d bg-indigo-600 rounded-2xl flex items-center gap-3 active:scale-95 shadow-indigo-500/20"
+                    >
                         <Icon name="resume" className="h-5 w-5" />
                         Download PDF
                     </Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 no-print">
                 <div className="space-y-8">
-                    {/* Module Title */}
                     <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40">
                          <Input label="DOCUMENT TITLE" value={resume.title} onChange={e => handleChange('title', e.target.value)} placeholder="E.G. SOFTWARE ENG INTERN" />
                     </motion.section>
 
-                    {/* Identity Profile */}
                     <motion.section 
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                         className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-6"
@@ -346,7 +349,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                         </div>
                     </motion.section>
 
-                    {/* Bio */}
                     <motion.section 
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                         className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4"
@@ -361,7 +363,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                         <Textarea rows={4} value={resume.summary} onChange={e => handleChange('summary', e.target.value)} />
                     </motion.section>
 
-                    {/* Education */}
                     <motion.section 
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
                         className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4"
@@ -390,7 +391,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                         </div>
                     </motion.section>
 
-                    {/* Experience */}
                     <motion.section 
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                         className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4"

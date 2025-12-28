@@ -217,9 +217,9 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
     try {
       const ai = getAI();
       const chat = ai.chats.create({ 
-          model: 'gemini-3-pro-preview',
+          model: 'gemini-2.5-flash-lite-latest',
           config: {
-              systemInstruction: "You are a specialized career AI. Provide insightful, data-driven advice for students."
+              systemInstruction: "You are a specialized career AI. Provide insightful, data-driven advice for students. Focus on speed and directness."
           }
       });
       const stream = await chat.sendMessageStream({ message: txt });
@@ -261,7 +261,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
           </motion.div>
           <div className="flex flex-col">
             <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Career Agent</h2>
-            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mt-1">Neural Core Active</span>
+            <div className="flex items-center gap-1.5 mt-1">
+               <span className="h-1 w-1 rounded-full bg-indigo-400 animate-pulse" />
+               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none">Lite Core Active (Fast)</span>
+            </div>
           </div>
         </div>
         <button 
