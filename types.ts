@@ -7,6 +7,12 @@ export enum Page {
   Chat = 'chat',
 }
 
+// AuthView enum used to manage the authentication state and display login or app content
+export enum AuthView {
+  Login = 'login',
+  App = 'app',
+}
+
 export interface User {
   id: string;
   email: string;

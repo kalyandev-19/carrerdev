@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { databaseService } from '../services/databaseService.ts';
 import { User } from '../types.ts';
-import Button from './common/Button.tsx';
-import Input from './common/Input.tsx';
 import Icon from './common/Icon.tsx';
+import { Vortex } from './ui/vortex.tsx';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
@@ -16,6 +16,57 @@ enum AuthStep {
   VERIFY
 }
 
+const AppInput = ({ label, placeholder, icon, type = "text", value, onChange, ...rest }: any) => {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePosition({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="w-full relative"
+    >
+      {label && <label className='block mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'>{label}</label>}
+      <div className="relative w-full">
+        <input
+          type={type}
+          value={value}
+          onChange={onChange}
+          className="peer relative z-10 border-2 border-[var(--color-border)] h-14 w-full rounded-2xl bg-[var(--color-surface)] px-6 font-medium text-white outline-none drop-shadow-sm transition-all duration-200 ease-in-out focus:border-indigo-500 focus:bg-slate-900/80 placeholder:text-slate-500"
+          placeholder={placeholder}
+          onMouseMove={handleMouseMove}
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+          {...rest}
+        />
+        {isHovering && (
+          <>
+            <div
+              className="absolute pointer-events-none top-0 left-0 right-0 h-[2px] z-20 rounded-t-md overflow-hidden"
+              style={{
+                background: `radial-gradient(30px circle at ${mousePosition.x}px 0px, var(--color-bg-2) 0%, transparent 70%)`,
+              }}
+            />
+          </>
+        )}
+        {icon && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 text-slate-500">
+            {icon}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [step, setStep] = useState<AuthStep>(AuthStep.LOGIN);
   const [email, setEmail] = useState('');
@@ -24,6 +75,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePosition({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,74 +131,193 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
+  const handleGuestLogin = () => {
+    const guest = databaseService.loginAsGuest();
+    onLogin(guest);
+  };
+
+  const socialIcons = [
+    { icon: <Icon name="logo" className="h-5 w-5" />, href: '#' },
+    { icon: <Icon name="chat" className="h-5 w-5" />, href: '#' },
+    { icon: <Icon name="network" className="h-5 w-5" />, href: '#' }
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">
-      <div 
-        className="w-full max-w-lg glass-panel p-10 md:p-14 rounded-[40px] shadow-3d border-white/50 border-t-2 border-l-2 tilt-card overflow-hidden relative"
-        style={{ transform: 'rotateX(2deg) rotateY(-2deg)' }}
-      >
-        <div className="absolute -top-24 -right-24 h-64 w-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 h-64 w-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10">
-          <div className="flex justify-center mb-10">
-            <div className="bg-indigo-600 p-5 rounded-3xl shadow-2xl shadow-indigo-600/30 ring-4 ring-indigo-500/10">
-              <Icon name="logo" className="h-10 w-10 text-white" />
-            </div>
-          </div>
-          
-          {step === AuthStep.VERIFY ? (
-            <div className="animate-in slide-in-from-right-8 duration-500">
-              <h2 className="text-3xl font-black text-center text-slate-900 dark:text-white mb-2 uppercase tracking-tight">Verify Account</h2>
-              <p className="text-center text-slate-500 dark:text-slate-400 mb-10 text-sm font-medium">Please enter the code sent to your email</p>
-              <form onSubmit={handleVerify} className="space-y-8">
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-3xl px-6 py-6 text-center text-4xl font-black tracking-[0.6em] focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-900 dark:text-white shadow-inner-soft"
-                  autoFocus
-                />
-                {error && <p className="text-rose-500 text-xs text-center font-bold uppercase">{error}</p>}
-                <Button type="submit" className="w-full py-5 btn-3d bg-indigo-600 rounded-2xl font-black uppercase tracking-[0.2em]" isLoading={loading}>Verify & Continue</Button>
-              </form>
-            </div>
-          ) : (
-            <div className="animate-in fade-in zoom-in-95 duration-500">
-              <h2 className="text-3xl font-black text-center text-slate-900 dark:text-white mb-2 uppercase tracking-tight">
-                {step === AuthStep.LOGIN ? 'Welcome Back' : 'Create Account'}
-              </h2>
-              <p className="text-center text-slate-500 dark:text-slate-400 mb-10 text-sm font-medium">
-                {step === AuthStep.LOGIN ? 'Sign in to access your dashboard' : 'Join thousands of students building their future'}
-              </p>
-
-              <form onSubmit={step === AuthStep.LOGIN ? handleLogin : handleSignup} className="space-y-5">
-                {step === AuthStep.SIGNUP && (
-                  <Input label="Full Name" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Enter your full name" className="!rounded-2xl !py-4 shadow-inner-soft" />
-                )}
-                <Input label="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" className="!rounded-2xl !py-4 shadow-inner-soft" />
-                <Input label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimum 6 characters" className="!rounded-2xl !py-4 shadow-inner-soft" />
-                
-                {error && <p className="text-rose-500 text-xs text-center font-bold uppercase">{error}</p>}
-
-                <Button type="submit" className="w-full py-5 btn-3d bg-indigo-600 rounded-2xl font-black uppercase tracking-[0.2em]" isLoading={loading}>
-                  {step === AuthStep.LOGIN ? 'Sign In' : 'Create My Account'}
-                </Button>
-              </form>
-
-              <div className="mt-10 flex flex-col items-center gap-4">
-                <button
-                  onClick={() => setStep(step === AuthStep.LOGIN ? AuthStep.SIGNUP : AuthStep.LOGIN)}
-                  className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
-                >
-                  {step === AuthStep.LOGIN ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+    <div className="min-h-screen w-full bg-[#020617] flex items-center justify-center p-6 overflow-hidden relative">
+      {/* Background Spatial Effect */}
+      <div className="absolute inset-0 z-0">
+        <Vortex
+          backgroundColor="transparent"
+          rangeY={800}
+          particleCount={250}
+          baseHue={230}
+          baseSpeed={0.1}
+          rangeSpeed={0.5}
+          className="w-full h-full opacity-30"
+          containerClassName="h-full w-full"
+        />
+        <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 via-transparent to-pink-500/5 pointer-events-none" />
       </div>
+
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, rotateX: 10 }}
+        animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className='relative z-10 glass-panel w-full max-w-[1000px] flex flex-col md:flex-row h-auto md:h-[650px] rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/5 overflow-hidden tilt-card'
+        onMouseMove={handleMouseMove}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        {/* Hover Glow Effect */}
+        <div
+          className={`absolute pointer-events-none w-[600px] h-[600px] bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 rounded-full blur-[100px] transition-opacity duration-500 ${
+            isHovering ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            transform: `translate(${mousePosition.x - 300}px, ${mousePosition.y - 300}px)`,
+            transition: 'transform 0.1s ease-out'
+          }}
+        />
+
+        {/* Left Section: Form */}
+        <div className='w-full md:w-1/2 px-8 lg:px-16 py-12 flex flex-col justify-center relative z-10'>
+          <AnimatePresence mode="wait">
+            {step === AuthStep.VERIFY ? (
+              <motion.div 
+                key="verify"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="text-center"
+              >
+                <h1 className='text-4xl font-black text-white mb-2 uppercase tracking-tighter'>Verify Account</h1>
+                <p className='text-slate-400 text-sm mb-8'>Code sent to your terminal (email)</p>
+                <form onSubmit={handleVerify} className="space-y-6">
+                  <motion.input
+                    initial={{ scale: 0.9 }}
+                    animate={{ scale: 1 }}
+                    type="text"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    className="w-full bg-slate-900/50 border-2 border-slate-800 rounded-3xl px-6 py-5 text-center text-4xl font-black tracking-[0.5em] focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-white"
+                    autoFocus
+                  />
+                  {error && <p className="text-rose-500 text-[10px] font-black uppercase">{error}</p>}
+                  <button type="submit" disabled={loading} className="w-full py-5 btn-3d bg-indigo-600 rounded-2xl font-black uppercase tracking-widest text-sm text-white">
+                    {loading ? 'Processing...' : 'Verify Protocol'}
+                  </button>
+                </form>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key={step}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="text-center"
+              >
+                <div className="mb-6">
+                  {/* Branding for Mobile View */}
+                  <div className="md:hidden flex flex-col items-center mb-8">
+                    <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg mb-2">
+                      <Icon name="logo" className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-xl font-black text-white tracking-tighter uppercase">Career Dev</span>
+                    <div className="h-px w-12 bg-indigo-500/30 mt-2" />
+                  </div>
+
+                  <h1 className='text-4xl font-black text-white uppercase tracking-tighter'>
+                    {step === AuthStep.LOGIN ? 'Sign In' : 'Sign Up'}
+                  </h1>
+                  <div className="flex gap-3 justify-center mt-6">
+                    {socialIcons.map((social, index) => (
+                      <motion.button 
+                        key={index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="w-12 h-12 glass-panel rounded-full flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all text-slate-400 border border-white/5"
+                      >
+                        {social.icon}
+                      </motion.button>
+                    ))}
+                  </div>
+                  <span className='text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mt-6 block'>or use account profile</span>
+                </div>
+
+                <form onSubmit={step === AuthStep.LOGIN ? handleLogin : handleSignup} className='space-y-4 text-left'>
+                  <AnimatePresence mode="popLayout">
+                    {step === AuthStep.SIGNUP && (
+                      <AppInput 
+                        key="signup-name"
+                        placeholder="IDENTITY NAME" 
+                        value={fullName} 
+                        onChange={(e: any) => setFullName(e.target.value)} 
+                      />
+                    )}
+                  </AnimatePresence>
+                  <AppInput 
+                    placeholder="EMAIL@DOMAIN.COM" 
+                    type="email" 
+                    value={email} 
+                    onChange={(e: any) => setEmail(e.target.value)} 
+                  />
+                  <AppInput 
+                    placeholder="ACCESS KEY" 
+                    type="password" 
+                    value={password} 
+                    onChange={(e: any) => setPassword(e.target.value)} 
+                  />
+                  
+                  {error && <p className="text-rose-500 text-[10px] font-black uppercase text-center">{error}</p>}
+
+                  <div className="flex flex-col gap-4 mt-8">
+                    <button type="submit" disabled={loading} className="w-full py-5 btn-3d bg-indigo-600 rounded-2xl font-black uppercase tracking-widest text-sm text-white active:scale-95 transition-all">
+                      {loading ? 'Neural Syncing...' : step === AuthStep.LOGIN ? 'Initialize Login' : 'Register Profile'}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={handleGuestLogin}
+                      className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-400 transition-colors"
+                    >
+                      Continue as Ghost User
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setError('');
+                        setStep(step === AuthStep.LOGIN ? AuthStep.SIGNUP : AuthStep.LOGIN);
+                      }}
+                      className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white"
+                    >
+                      {step === AuthStep.LOGIN ? "Sign Up" : "Log In"}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Right Section: Visual / Image */}
+        <div className='hidden md:block w-1/2 h-full relative overflow-hidden bg-slate-900'>
+          <motion.img
+            initial={{ scale: 1.2, opacity: 0 }}
+            animate={{ scale: 1.1, opacity: 0.5 }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            src='https://images.pexels.com/photos/7102037/pexels-photo-7102037.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
+            alt="Carousel"
+            className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/20 p-12 flex flex-col justify-end">
+            <h3 className="text-2xl font-black text-white tracking-tighter uppercase mb-2">Career Dev</h3>
+            <p className="text-slate-400 text-sm font-bold uppercase tracking-widest leading-relaxed">
+              Unlock the next level of your professional trajectory.
+            </p>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -7,11 +8,11 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 const Textarea: React.FC<TextareaProps> = ({ label, id, className = '', ...props }) => {
   return (
-    <div>
-      {label && <label htmlFor={id} className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</label>}
+    <div className="space-y-2">
+      {label && <label htmlFor={id} className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-2">{label}</label>}
       <textarea
         id={id}
-        className={`w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white transition-colors ${className}`}
+        className={`w-full px-6 py-4 bg-white dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-2xl shadow-inner-soft placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 dark:text-white font-semibold transition-all custom-scrollbar ${className}`}
         {...props}
       />
     </div>

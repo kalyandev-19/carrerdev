@@ -1,8 +1,8 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GoogleGenAI, GenerateContentResponse, LiveServerMessage, Modality } from "@google/genai";
+import { motion, AnimatePresence } from 'framer-motion';
+import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
 import Button from './common/Button.tsx';
-import Spinner from './common/Spinner.tsx';
 import Icon from './common/Icon.tsx';
 import { User } from '../types.ts';
 
@@ -16,7 +16,6 @@ interface ChatBotProps {
   user: User;
 }
 
-// Helper functions for audio processing
 function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -36,16 +35,10 @@ function encode(bytes: Uint8Array) {
   return btoa(binary);
 }
 
-async function decodeAudioData(
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
-): Promise<AudioBuffer> {
+async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
   for (let channel = 0; channel < numChannels; channel++) {
     const channelData = buffer.getChannelData(channel);
     for (let i = 0; i < frameCount; i++) {
@@ -55,18 +48,18 @@ async function decodeAudioData(
   return buffer;
 }
 
-const VoiceVisualizer: React.FC<{ level: number; color: string; count?: number }> = ({ level, color, count = 24 }) => {
+const VoiceVisualizer: React.FC<{ level: number; color: string; count?: number }> = ({ level, color, count = 32 }) => {
   return (
-    <div className="flex items-center justify-center gap-2 h-32 w-full perspective-[1000px]">
+    <div className="flex items-center justify-center gap-1.5 h-48 w-full perspective-[1500px]">
       {[...Array(count)].map((_, i) => (
-        <div 
+        <motion.div 
           key={i}
-          className={`w-2 rounded-full transition-all duration-75 shadow-lg ${color} shadow-indigo-500/20`}
-          style={{ 
-            height: `${20 + (Math.random() * level * 100)}%`,
-            opacity: 0.3 + (level * 0.7),
-            transform: `translateZ(${level * 50}px) rotateY(${i * 10}deg)`
+          animate={{ 
+            height: `${15 + (level * 160 * (0.6 + Math.random() * 0.4))}%`, 
+            opacity: 0.2 + (level * 0.8) 
           }}
+          transition={{ duration: 0.08 }}
+          className={`w-1.5 rounded-full shadow-lg ${color} shadow-indigo-500/20`}
         />
       ))}
     </div>
@@ -75,258 +68,246 @@ const VoiceVisualizer: React.FC<{ level: number; color: string; count?: number }
 
 const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const [isSpeechFallback, setIsSpeechFallback] = useState(false);
-  const [isAutoSpeak, setIsAutoSpeak] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'model',
-      text: `Hello, ${user.fullName.split(' ')[0]}! I'm your career assistant. How can I help you with your job search or resume today?`
-    }
+    { role: 'model', text: `Systems online. How can I assist with your career development today, ${user.fullName.split(' ')[0]}?` }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [inputAudioLevel, setInputAudioLevel] = useState(0);
-  const [apiError, setApiError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
-  const liveSessionRef = useRef<any>(null);
-  const nextStartTimeRef = useRef(0);
-  const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const analyzerRef = useRef<AnalyserNode | null>(null);
   const inputAnalyzerRef = useRef<AnalyserNode | null>(null);
   const visualizerRequestRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      stopAllAudio();
-      if (visualizerRequestRef.current) cancelAnimationFrame(visualizerRequestRef.current);
-    };
-  }, []);
+  const activeSessionRef = useRef<any>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleFatalError = (err: any) => {
-    const msg = err?.message || "Something went wrong.";
-    setApiError(msg);
-  };
-
-  const stopAllAudio = useCallback(() => {
-    sourcesRef.current.forEach(source => {
-      try { source.stop(); } catch (e) {}
-    });
-    sourcesRef.current.clear();
-    setIsSpeaking(false);
-    setAudioLevel(0);
-  }, []);
-
   const stopVoiceMode = useCallback(() => {
     setIsVoiceMode(false);
-    setIsSpeechFallback(false);
-    stopAllAudio();
-    if (liveSessionRef.current) liveSessionRef.current = null;
+    if (activeSessionRef.current) {
+        try { activeSessionRef.current.close(); } catch(e) {}
+        activeSessionRef.current = null;
+    }
     if (audioContextRef.current) audioContextRef.current.close();
     if (outputAudioContextRef.current) outputAudioContextRef.current.close();
-    setInputAudioLevel(0);
     if (visualizerRequestRef.current) cancelAnimationFrame(visualizerRequestRef.current);
-  }, [stopAllAudio]);
+  }, []);
 
   const startVoiceMode = async () => {
-    setApiError(null);
     try {
       setIsVoiceMode(true);
-      setIsLoading(true);
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const inputAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      const outputAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      audioContextRef.current = inputAudioCtx;
-      outputAudioContextRef.current = outputAudioCtx;
+      
+      const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+      const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      
+      // Resume context (fix for browser autoplay policies)
+      if (inputCtx.state === 'suspended') await inputCtx.resume();
+      if (outputCtx.state === 'suspended') await outputCtx.resume();
 
-      const analyzer = outputAudioCtx.createAnalyser();
+      audioContextRef.current = inputCtx;
+      outputAudioContextRef.current = outputCtx;
+
+      const analyzer = outputCtx.createAnalyser();
+      analyzer.fftSize = 256;
       analyzerRef.current = analyzer;
-      const inputAnalyzer = inputAudioCtx.createAnalyser();
+      
+      const inputAnalyzer = inputCtx.createAnalyser();
+      inputAnalyzer.fftSize = 256;
       inputAnalyzerRef.current = inputAnalyzer;
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const micSource = inputAudioCtx.createMediaStreamSource(stream);
+      const micSource = inputCtx.createMediaStreamSource(stream);
       micSource.connect(inputAnalyzer);
 
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         callbacks: {
           onopen: () => {
-            setIsLoading(false);
-            const scriptProcessor = inputAudioCtx.createScriptProcessor(4096, 1, 1);
-            scriptProcessor.onaudioprocess = (e) => {
-              const inputData = e.inputBuffer.getChannelData(0);
-              const pcmBlob = {
-                data: encode(new Uint8Array(new Int16Array(inputData.map(v => v * 32768)).buffer)),
-                mimeType: 'audio/pcm;rate=16000',
-              };
-              sessionPromise.then(s => s.sendRealtimeInput({ media: pcmBlob }));
+            const processor = inputCtx.createScriptProcessor(4096, 1, 1);
+            processor.onaudioprocess = (e) => {
+              const data = e.inputBuffer.getChannelData(0);
+              const pcm = encode(new Uint8Array(new Int16Array(data.map(v => v * 32767)).buffer));
+              sessionPromise.then(s => {
+                  activeSessionRef.current = s;
+                  s.sendRealtimeInput({ media: { data: pcm, mimeType: 'audio/pcm;rate=16000' } });
+              });
             };
-            micSource.connect(scriptProcessor);
-            scriptProcessor.connect(inputAudioCtx.destination);
+            micSource.connect(processor);
+            processor.connect(inputCtx.destination);
           },
-          onmessage: async (message: LiveServerMessage) => {
-            const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-            if (base64Audio) {
+          onmessage: async (msg: LiveServerMessage) => {
+            const audio = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+            if (audio) {
               setIsSpeaking(true);
-              nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputAudioCtx.currentTime);
-              const buffer = await decodeAudioData(decode(base64Audio), outputAudioCtx, 24000, 1);
-              const source = outputAudioCtx.createBufferSource();
+              const buffer = await decodeAudioData(decode(audio), outputCtx, 24000, 1);
+              const source = outputCtx.createBufferSource();
               source.buffer = buffer;
               source.connect(analyzer);
-              analyzer.connect(outputAudioCtx.destination);
-              source.addEventListener('ended', () => {
-                sourcesRef.current.delete(source);
-                if (sourcesRef.current.size === 0) setIsSpeaking(false);
-              });
-              source.start(nextStartTimeRef.current);
-              nextStartTimeRef.current += buffer.duration;
-              sourcesRef.current.add(source);
+              analyzer.connect(outputCtx.destination);
+              source.addEventListener('ended', () => setIsSpeaking(false));
+              source.start();
             }
           },
-          onclose: () => stopVoiceMode(),
-          onerror: (e) => handleFatalError(e),
+          onerror: (err) => console.error("Live AI Error:", err),
+          onclose: stopVoiceMode,
         },
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
-          },
-          systemInstruction: 'You are an Encouraging Career Assistant.',
+        config: { 
+          responseModalities: [Modality.AUDIO], 
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
+          systemInstruction: "You are a helpful career advisor. Keep your spoken responses concise and natural."
         }
       });
 
-      const updateVisualizer = () => {
+      const update = () => {
         if (analyzerRef.current) {
-          const dataArray = new Uint8Array(analyzerRef.current.frequencyBinCount);
-          analyzerRef.current.getByteFrequencyData(dataArray);
-          setAudioLevel(dataArray.reduce((a, b) => a + b) / dataArray.length / 128);
+          const data = new Uint8Array(analyzerRef.current.frequencyBinCount);
+          analyzerRef.current.getByteFrequencyData(data);
+          const level = data.reduce((a, b) => a + b, 0) / data.length / 255;
+          setAudioLevel(level);
         }
         if (inputAnalyzerRef.current) {
-          const dataArray = new Uint8Array(inputAnalyzerRef.current.frequencyBinCount);
-          inputAnalyzerRef.current.getByteFrequencyData(dataArray);
-          setInputAudioLevel(dataArray.reduce((a, b) => a + b) / dataArray.length / 128);
+          const data = new Uint8Array(inputAnalyzerRef.current.frequencyBinCount);
+          inputAnalyzerRef.current.getByteFrequencyData(data);
+          const level = data.reduce((a, b) => a + b, 0) / data.length / 255;
+          setInputAudioLevel(level);
         }
-        visualizerRequestRef.current = requestAnimationFrame(updateVisualizer);
+        visualizerRequestRef.current = requestAnimationFrame(update);
       };
-      updateVisualizer();
-    } catch (err) {
-      handleFatalError(err);
+      update();
+    } catch (e) { 
+      console.error(e);
+      setIsVoiceMode(false); 
     }
   };
 
   const sendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading) return;
-    const currentInput = input;
-    setMessages(prev => [...prev, { role: 'user', text: currentInput }]);
+    const txt = input;
+    setMessages(prev => [...prev, { role: 'user', text: txt }]);
     setInput('');
     setIsLoading(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-      const chat = ai.chats.create({ model: 'gemini-3-pro-preview' });
-      const streamResponse = await chat.sendMessageStream({ message: currentInput });
-      let fullText = "";
+      const chat = ai.chats.create({ 
+          model: 'gemini-3-pro-preview',
+          config: {
+              systemInstruction: "You are a specialized career AI. Provide insightful, data-driven advice for students."
+          }
+      });
+      const stream = await chat.sendMessageStream({ message: txt });
+      let full = "";
       setMessages(prev => [...prev, { role: 'model', text: "", isStreaming: true }]);
-      for await (const chunk of streamResponse) {
-        fullText += (chunk.text || "");
+      for await (const chunk of stream) {
+        full += chunk.text;
         setMessages(prev => {
-          const newMsgs = [...prev];
-          newMsgs[newMsgs.length - 1].text = fullText;
-          return newMsgs;
+          const next = [...prev];
+          const last = next[next.length-1];
+          if (last) last.text = full;
+          return next;
         });
       }
       setMessages(prev => {
-        const newMsgs = [...prev];
-        newMsgs[newMsgs.length - 1].isStreaming = false;
-        return newMsgs;
-      });
-    } catch (error) {
-      handleFatalError(error);
-    } finally {
-      setIsLoading(false);
+          const next = [...prev];
+          const last = next[next.length-1];
+          if (last) last.isStreaming = false;
+          return next;
+        });
+    } catch (e) { 
+        console.error(e);
+        setIsLoading(false); 
+    } finally { 
+        setIsLoading(false); 
     }
   };
 
   return (
-    <div className={`max-w-5xl mx-auto h-[calc(100vh-10rem)] flex flex-col rounded-[40px] shadow-3d overflow-hidden transition-all duration-700 glass-panel border-t-2 border-l-2 border-white/50 ${
-      isVoiceMode ? 'bg-slate-950 ring-4 ring-indigo-500/20' : ''
-    }`}>
-      {/* Understandable Header */}
-      <div className="px-10 py-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-5">
-          <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg tilt-card">
+    <div className={`max-w-5xl mx-auto h-[calc(100vh-10rem)] flex flex-col rounded-[40px] shadow-3d overflow-hidden glass-panel border-t-2 border-l-2 border-white/30 transition-all duration-700 ${isVoiceMode ? 'bg-slate-950 ring-8 ring-indigo-500/10' : ''}`}>
+      <div className="px-10 py-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white/5 backdrop-blur-md">
+        <div className="flex items-center gap-4">
+          <motion.div animate={{ rotate: isVoiceMode ? 360 : 0 }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }} className="bg-indigo-600 p-2.5 rounded-xl shadow-lg">
             <Icon name="logo" className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Career AI</h2>
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${isVoiceMode ? 'bg-indigo-400 animate-pulse' : 'bg-slate-400'}`} />
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isVoiceMode ? 'On Air' : 'Ready'}</span>
-            </div>
+          </motion.div>
+          <div className="flex flex-col">
+            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Career Agent</h2>
+            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mt-1">Neural Core Active</span>
           </div>
         </div>
-        <button onClick={isVoiceMode ? stopVoiceMode : startVoiceMode} className={`btn-3d px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest ${isVoiceMode ? 'bg-slate-800 text-indigo-400' : 'bg-indigo-600 text-white'}`}>
-          {isVoiceMode ? 'Stop Voice' : 'Voice Mode'}
+        <button 
+            onClick={isVoiceMode ? stopVoiceMode : startVoiceMode} 
+            className={`btn-3d px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] ${isVoiceMode ? 'bg-rose-600 shadow-rose-950' : 'bg-indigo-600'}`}
+        >
+          {isVoiceMode ? 'Terminate Stream' : 'Initialize Voice'}
         </button>
       </div>
 
       <div className="flex-grow flex flex-col relative overflow-hidden">
         {isVoiceMode ? (
-          <div className="flex-grow flex flex-col items-center justify-center p-12">
-            <div className="relative mb-20 group">
-              <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-3xl animate-pulse" />
-              <div className={`h-64 w-64 rounded-full glass-panel border-2 border-indigo-500/30 flex items-center justify-center transition-transform duration-300 shadow-3d ${isSpeaking ? 'scale-110' : 'scale-100'}`}>
-                <div className="flex flex-col items-center">
-                   <div className="h-32 w-32 bg-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl tilt-card">
-                      <Icon name="logo" className="h-16 w-16 text-white" />
-                   </div>
-                </div>
-              </div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-grow flex flex-col items-center justify-center p-12">
+            <div className="relative mb-16">
+              <motion.div 
+                animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.4, 0.1] }} 
+                transition={{ duration: 3, repeat: Infinity }} 
+                className="absolute inset-0 bg-indigo-500 rounded-full blur-[90px]" 
+              />
+              <motion.div 
+                animate={{ 
+                    scale: isSpeaking ? 1.05 : 1,
+                    boxShadow: isSpeaking ? "0 0 50px 10px rgba(79, 70, 229, 0.3)" : "0 20px 50px rgba(0,0,0,0.1)"
+                }}
+                className="h-64 w-64 rounded-full glass-panel border-2 border-indigo-500/40 flex items-center justify-center shadow-3d relative z-10 overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/10 to-transparent" />
+                <Icon name="logo" className={`h-28 w-28 text-indigo-500 transition-all ${isSpeaking ? 'animate-pulse' : ''}`} />
+              </motion.div>
             </div>
-            <VoiceVisualizer level={isSpeaking ? audioLevel : inputAudioLevel} color={isSpeaking ? 'bg-indigo-500' : 'bg-slate-600'} />
-            <div className="mt-12 text-center">
-               <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.5em]">{isSpeaking ? 'AI Speaking' : 'Listening...'}</span>
-            </div>
-          </div>
+            <VoiceVisualizer level={isSpeaking ? audioLevel : inputAudioLevel} color={isSpeaking ? 'bg-indigo-400' : 'bg-slate-700'} />
+            <p className="mt-8 text-xs font-black uppercase tracking-[0.4em] text-slate-500 animate-pulse">
+                {isSpeaking ? "Receiving Data Transmission" : "Listening for User Input"}
+            </p>
+          </motion.div>
         ) : (
           <div className="flex-grow overflow-y-auto p-10 space-y-8 custom-scrollbar">
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} tilt-card`}>
-                <div className={`max-w-[80%] px-8 py-5 rounded-[30px] shadow-3d border-t-2 border-l-2 ${
-                  msg.role === 'user' 
-                  ? 'bg-indigo-600 text-white border-white/20' 
-                  : 'glass-panel text-slate-900 dark:text-white border-white/40'
-                }`}>
-                  <p className="text-base font-semibold leading-relaxed">{msg.text}</p>
-                </div>
-              </div>
-            ))}
+            <AnimatePresence mode="popLayout">
+              {messages.map((msg, i) => (
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`max-w-[85%] px-8 py-6 rounded-[35px] shadow-3d border-t-2 border-l-2 ${msg.role === 'user' ? 'bg-indigo-600 text-white border-white/10' : 'glass-panel text-slate-900 dark:text-white border-white/20'}`}>
+                    <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    {msg.isStreaming && <span className="inline-block w-1.5 h-4 ml-1.5 bg-indigo-500 animate-pulse rounded-full align-middle" />}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
             <div ref={scrollRef} />
           </div>
         )}
       </div>
 
       {!isVoiceMode && (
-        <div className="p-8 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800">
-          <form onSubmit={sendMessage} className="relative flex gap-4 max-w-5xl mx-auto">
+        <div className="p-8 bg-slate-950/20 backdrop-blur-lg border-t border-white/5">
+          <form onSubmit={sendMessage} className="flex gap-4 max-w-5xl mx-auto">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your question..."
-              className="flex-grow glass-panel border-2 border-slate-100 dark:border-slate-700 rounded-3xl px-10 py-6 text-base font-semibold shadow-inner-soft focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+              placeholder="Query neural network..."
+              className="flex-grow glass-panel border-2 border-slate-100 dark:border-slate-800 rounded-2xl px-8 py-5 text-sm font-bold shadow-inner-soft focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
             />
-            <button type="submit" className="p-6 bg-indigo-600 hover:bg-indigo-500 rounded-3xl btn-3d shadow-xl transition-all">
-              <Icon name="send" className="h-7 w-7 text-white" />
+            <button type="submit" className="p-5 bg-indigo-600 rounded-2xl btn-3d shadow-xl transition-all active:scale-90">
+              <Icon name="send" className="h-6 w-6 text-white" />
             </button>
           </form>
         </div>

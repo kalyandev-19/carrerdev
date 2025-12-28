@@ -7,8 +7,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Helper to check if a string is a valid UUID before querying Supabase
-const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+// Helper to check if a string is a valid UUID or our guest identifier
+const isValidId = (id: string) => id === 'guest-user' || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 
 export const databaseService = {
   // --- User & Auth Methods ---
@@ -83,8 +83,17 @@ export const databaseService = {
     };
   },
 
+  loginAsGuest: (): User => {
+    return {
+      id: 'guest-user',
+      email: 'guest@careerdev.ai',
+      fullName: 'Guest explorer'
+    };
+  },
+
   logout: async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem('careerdev_guest_resume');
   },
 
   setSession: async (user: User | null) => {
@@ -110,7 +119,12 @@ export const databaseService = {
 
   // --- Resume Methods ---
   getResume: async (userId: string): Promise<ResumeData | null> => {
-    if (!isUuid(userId)) return null;
+    if (!isValidId(userId)) return null;
+
+    if (userId === 'guest-user') {
+      const localData = localStorage.getItem('careerdev_guest_resume');
+      return localData ? JSON.parse(localData) : null;
+    }
 
     const { data, error } = await supabase
       .from('resumes')
@@ -138,7 +152,12 @@ export const databaseService = {
   },
 
   saveResume: async (resume: ResumeData) => {
-    if (!isUuid(resume.userId)) return;
+    if (!isValidId(resume.userId)) return;
+
+    if (resume.userId === 'guest-user') {
+      localStorage.setItem('careerdev_guest_resume', JSON.stringify(resume));
+      return;
+    }
 
     // Ensure education and experience are correctly serialized for JSONB
     const payload = {

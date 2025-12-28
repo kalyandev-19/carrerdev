@@ -1,12 +1,13 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { ResumeData, Experience, Education, User } from '../types';
-import Button from './common/Button';
-import Input from './common/Input';
-import Textarea from './common/Textarea';
-import { generateResumeSectionStream } from '../services/geminiService';
-import { databaseService } from '../services/databaseService';
-import Icon from './common/Icon';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { ResumeData, User } from '../types';
+import Button from './common/Button.tsx';
+import Input from './common/Input.tsx';
+import Textarea from './common/Textarea.tsx';
+import { generateResumeSectionStream } from '../services/geminiService.ts';
+import { databaseService } from '../services/databaseService.ts';
+import Icon from './common/Icon.tsx';
 
 interface ResumeBuilderProps {
   user: User;
@@ -31,12 +32,50 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
     const previewContainerRef = useRef<HTMLDivElement>(null);
     const [previewScale, setPreviewScale] = useState(1);
 
+    // 3D Tilt Values
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+    const mouseXSpring = useSpring(x);
+    const mouseYSpring = useSpring(y);
+    const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["5deg", "-5deg"]);
+    const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-5deg", "5deg"]);
+
+    const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+        if (!previewContainerRef.current) return;
+        const rect = previewContainerRef.current.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+        const xPct = mouseX / width - 0.5;
+        const yPct = mouseY / height - 0.5;
+        x.set(xPct);
+        y.set(yPct);
+    };
+
+    const handleMouseLeave = () => {
+        x.set(0);
+        y.set(0);
+    };
+
+    const handleExport = () => {
+        // Change title temporarily so the PDF file has a professional name
+        const originalTitle = document.title;
+        const fileName = `${resume.fullName.replace(/\s+/g, '_')}_Resume`;
+        document.title = fileName;
+        
+        window.print();
+        
+        // Restore original title after print dialog closes
+        setTimeout(() => {
+            document.title = originalTitle;
+        }, 500);
+    };
+
     useEffect(() => {
         const loadResume = async () => {
           const savedResume = await databaseService.getResume(user.id);
-          if (savedResume) {
-              setResume(savedResume);
-          }
+          if (savedResume) setResume(savedResume);
         };
         loadResume();
     }, [user.id]);
@@ -46,12 +85,11 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
             if (previewContainerRef.current) {
                 const containerWidth = previewContainerRef.current.offsetWidth;
                 const a4Width = 794;
-                const padding = 32;
+                const padding = 64;
                 const newScale = (containerWidth - padding) / a4Width;
-                setPreviewScale(Math.min(newScale, 1.2));
+                setPreviewScale(Math.min(newScale, 1.0));
             }
         };
-
         window.addEventListener('resize', handleResize);
         const timer = setTimeout(handleResize, 100);
         return () => {
@@ -59,22 +97,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
             clearTimeout(timer);
         };
     }, [activeTab]);
-
-    const handleSave = async () => {
-        setSaveStatus('saving');
-        try {
-            await databaseService.saveResume(resume);
-            setSaveStatus('saved');
-        } catch (error) {
-            console.error('Save failed:', error);
-            setSaveStatus('dirty');
-        }
-    };
-
-    const handleDownload = () => {
-        handleSave();
-        window.print();
-    };
 
     const handleChange = <T extends keyof ResumeData,>(field: T, value: ResumeData[T]) => {
         setResume(prev => ({ ...prev, [field]: value }));
@@ -103,14 +125,13 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
     const handleGenerateAI = useCallback(async (section: 'summary' | 'responsibilities', context?: string, index?: number) => {
         let prompt = '';
         if (section === 'summary') {
-            prompt = `Write a professional summary for a student's resume. Name: ${resume.fullName}. Key skills: ${resume.skills}. Seek internship. Focus on value proposition.`;
+            prompt = `Write a professional summary for a student's resume. Name: ${resume.fullName}. Key skills: ${resume.skills}. Focus on industry value.`;
             setLoadingSection('summary');
         } else if (section === 'responsibilities' && typeof index === 'number') {
             const exp = resume.experience[index];
-            prompt = `Write 3 impactful resume bullets for ${exp.role} at ${exp.company}. Use STAR method and metrics.`;
+            prompt = `Write 3 STAR method bullet points for ${exp.role} at ${exp.company}. High impact.`;
             setLoadingSection(`responsibilities-${index}`);
         }
-
         if (!prompt) return;
 
         try {
@@ -129,184 +150,140 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                 }
                 setSaveStatus('dirty');
             }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoadingSection(null);
-        }
+        } catch (error) { console.error(error); } finally { setLoadingSection(null); }
     }, [resume]);
-
-    const ResumePreviewContent = () => (
-        <div id="resume-printable-area" className="bg-white text-slate-900 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.25)] mx-auto flex flex-col transition-all duration-500 origin-top resume-paper border border-slate-100"
-            style={{ width: '794px', minHeight: '1123px', padding: '64px', transform: `scale(${previewScale})`, marginBottom: `calc((1123px * ${previewScale}) - 1123px)` }}>
-            <header className="text-center mb-10">
-                <h1 className="text-5xl font-black text-slate-950 tracking-tighter uppercase leading-none mb-4">{resume.fullName || 'YOUR NAME'}</h1>
-                <div className="flex flex-wrap justify-center items-center gap-x-4 text-[13px] font-bold text-slate-500 uppercase tracking-widest">
-                    <span>{resume.email}</span>
-                    {resume.phone && <><span className="text-indigo-400">•</span><span>{resume.phone}</span></>}
-                    {resume.linkedin && <><span className="text-indigo-400">•</span><span>{resume.linkedin}</span></>}
-                    {resume.github && <><span className="text-indigo-400">•</span><span>{resume.github}</span></>}
-                </div>
-            </header>
-            <section className="mb-10">
-                <div className="flex items-center gap-4 mb-4">
-                    <h2 className="text-[14px] font-black text-indigo-700 uppercase tracking-widest whitespace-nowrap">Professional Profile</h2>
-                    <div className="h-[2px] bg-slate-100 flex-grow"></div>
-                </div>
-                <p className="text-[14px] leading-relaxed text-slate-700 text-justify font-medium whitespace-pre-wrap">{resume.summary || 'Describe your journey...'}</p>
-            </section>
-            <section className="mb-10">
-                <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-[14px] font-black text-indigo-700 uppercase tracking-widest whitespace-nowrap">Experience</h2>
-                    <div className="h-[2px] bg-slate-100 flex-grow"></div>
-                </div>
-                {resume.experience.map(exp => (
-                    <div key={exp.id} className="relative mb-6">
-                        <div className="flex justify-between items-baseline mb-1">
-                            <h4 className="text-[16px] font-bold text-slate-900">{exp.role || 'Job Title'}</h4>
-                            <span className="text-[12px] font-bold text-slate-500 uppercase tracking-tighter">{exp.startDate} – {exp.endDate}</span>
-                        </div>
-                        <div className="text-[13px] font-bold text-indigo-600 mb-3 italic">{exp.company || 'Organization Name'}</div>
-                        <ul className="list-disc ml-5 text-[13px] text-slate-700 space-y-2 leading-relaxed">
-                            {exp.responsibilities.split('\n').filter(l => l.trim()).map((line, i) => (
-                              <li key={i}>{line.replace(/^[•\-\*]\s*/, '').trim()}</li>
-                            ))}
-                        </ul>
-                    </div>
-                ))}
-            </section>
-            <section className="mb-10">
-                <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-[14px] font-black text-indigo-700 uppercase tracking-widest whitespace-nowrap">Education</h2>
-                    <div className="h-[2px] bg-slate-100 flex-grow"></div>
-                </div>
-                {resume.education.map(edu => (
-                    <div key={edu.id} className="mb-4">
-                        <div className="flex justify-between items-baseline mb-1">
-                            <h4 className="text-[15px] font-bold text-slate-900">{edu.school || 'University Name'}</h4>
-                            <span className="text-[12px] font-bold text-slate-500">{edu.startDate} – {edu.endDate}</span>
-                        </div>
-                        <div className="flex justify-between text-[13px] text-slate-600 italic">
-                            <span>{edu.degree || 'Field of Study'}</span>
-                            {edu.gpa && <span>GPA: {edu.gpa}</span>}
-                        </div>
-                    </div>
-                ))}
-            </section>
-        </div>
-    );
 
     return (
         <div className="py-8">
-            <style dangerouslySetInnerHTML={{ __html: `
-                @media print {
-                    body * { visibility: hidden; }
-                    #resume-printable-area, #resume-printable-area * { visibility: visible; }
-                    #resume-printable-area {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100% !important;
-                        margin: 0 !important;
-                        padding: 40px !important;
-                        transform: scale(1) !important;
-                        box-shadow: none !important;
-                    }
-                    @page { size: A4; margin: 0; }
-                }
-            `}} />
-            
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-                <div className="animate-in slide-in-from-left-4 duration-500">
-                    <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Resume Editor</h2>
-                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">3D Spatial Workspace</p>
-                </div>
-                <div className="flex items-center gap-3 w-full md:w-auto animate-in slide-in-from-right-4 duration-500">
-                    <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-2xl lg:hidden flex-grow md:flex-grow-0">
-                        <button onClick={() => setActiveTab('edit')} className={`flex-1 px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'edit' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-3d' : 'text-slate-500'}`}>Edit</button>
-                        <button onClick={() => setActiveTab('preview')} className={`flex-1 px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'preview' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-3d' : 'text-slate-500'}`}>Preview</button>
-                    </div>
-                    <Button onClick={handleDownload} className="h-12 px-8 btn-3d bg-indigo-600 hover:bg-indigo-500 rounded-2xl flex items-center gap-3 active:scale-95">
-                        <Icon name="logo" className="h-5 w-5" />
-                        Download
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                    <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Resume Studio</h2>
+                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">3D Precision Workspace</p>
+                </motion.div>
+                <div className="flex items-center gap-3">
+                    <Button onClick={handleExport} className="h-12 px-8 btn-3d bg-indigo-600 rounded-2xl flex items-center gap-3 active:scale-95">
+                        <Icon name="resume" className="h-5 w-5" />
+                        Export PDF
                     </Button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                <div className={`space-y-8 h-fit ${activeTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
+                <div className="space-y-8">
                     {/* Contact Info */}
-                    <section className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-6">
+                    <motion.section 
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                        className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-6"
+                    >
                         <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
                             <div className="bg-indigo-600/10 p-3 rounded-2xl">
                                 <Icon name="logo" className="h-6 w-6 text-indigo-600" />
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Personal Details</h3>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Identity Profile</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Input label="FULL NAME" value={resume.fullName} onChange={e => handleChange('fullName', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
-                            <Input label="EMAIL ADDRESS" type="email" value={resume.email} onChange={e => handleChange('email', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
-                            <Input label="PHONE NUMBER" value={resume.phone} onChange={e => handleChange('phone', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
-                            <Input label="LINKEDIN PROFILE" value={resume.linkedin} onChange={e => handleChange('linkedin', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
-                            <Input label="GITHUB REPO" value={resume.github} onChange={e => handleChange('github', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
-                            <Input label="TECHNICAL SKILLS" value={resume.skills} onChange={e => handleChange('skills', e.target.value)} placeholder="REACT, PYTHON..." className="!rounded-2xl !py-4 shadow-inner-soft" />
+                            <Input label="FULL NAME" value={resume.fullName} onChange={e => handleChange('fullName', e.target.value)} />
+                            <Input label="EMAIL" value={resume.email} onChange={e => handleChange('email', e.target.value)} />
+                            <Input label="PHONE" value={resume.phone} onChange={e => handleChange('phone', e.target.value)} />
+                            <Input label="LINKEDIN" value={resume.linkedin} onChange={e => handleChange('linkedin', e.target.value)} />
+                            <Input label="SKILLS" value={resume.skills} onChange={e => handleChange('skills', e.target.value)} placeholder="E.G. REACT, TYPESCRIPT" />
                         </div>
-                    </section>
+                    </motion.section>
 
                     {/* Summary */}
-                    <section className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4">
+                    <motion.section 
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                        className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4"
+                    >
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-sky-600/10 p-3 rounded-2xl">
-                                    <Icon name="analyzer" className="h-6 w-6 text-sky-600" />
-                                </div>
-                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Professional Bio</h3>
-                            </div>
-                            <Button onClick={() => handleGenerateAI('summary')} isLoading={loadingSection === 'summary'} className="bg-white dark:bg-slate-700 !text-indigo-600 dark:!text-indigo-400 h-10 px-6 rounded-xl font-black text-[10px] tracking-widest border border-slate-200 dark:border-slate-600 shadow-sm">AI ASSIST</Button>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Professional Bio</h3>
+                            <Button onClick={() => handleGenerateAI('summary')} isLoading={loadingSection === 'summary'} className="h-8 px-4 text-[9px] bg-slate-100 dark:bg-slate-700 !text-indigo-600">AI Optimize</Button>
                         </div>
-                        <Textarea rows={4} value={resume.summary} onChange={e => handleChange('summary', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
-                    </section>
+                        <Textarea rows={4} value={resume.summary} onChange={e => handleChange('summary', e.target.value)} />
+                    </motion.section>
 
-                    {/* Experience Section */}
-                    <section className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4">
+                    {/* Experience */}
+                    <motion.section 
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                        className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4"
+                    >
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-emerald-600/10 p-3 rounded-2xl">
-                                    <Icon name="roadmap" className="h-6 w-6 text-emerald-600" />
-                                </div>
-                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Experience</h3>
-                            </div>
-                            <button onClick={() => addEntry('experience')} className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600 hover:text-indigo-700">+ New Job</button>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Experience Blocks</h3>
+                            <button onClick={() => addEntry('experience')} className="text-[10px] font-black uppercase tracking-widest text-indigo-600">+ Add Block</button>
                         </div>
-                        <div className="space-y-8">
+                        <div className="space-y-6">
                             {resume.experience.map((exp, idx) => (
-                                <div key={exp.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft animate-in zoom-in-95 duration-300">
-                                    <button onClick={() => removeEntry('experience', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 transition-colors"><Icon name="sun" className="h-5 w-5 rotate-45" /></button>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                        <Input label="COMPANY" value={exp.company} onChange={e => handleNestedChange('experience', idx, 'company', e.target.value)} className="!rounded-xl" />
-                                        <Input label="ROLE" value={exp.role} onChange={e => handleNestedChange('experience', idx, 'role', e.target.value)} className="!rounded-xl" />
-                                        <Input label="START" value={exp.startDate} onChange={e => handleNestedChange('experience', idx, 'startDate', e.target.value)} className="!rounded-xl" />
-                                        <Input label="END" value={exp.endDate} onChange={e => handleNestedChange('experience', idx, 'endDate', e.target.value)} className="!rounded-xl" />
+                                <div key={exp.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft">
+                                    <button onClick={() => removeEntry('experience', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500"><Icon name="sun" className="h-4 w-4 rotate-45" /></button>
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <Input label="COMPANY" value={exp.company} onChange={e => handleNestedChange('experience', idx, 'company', e.target.value)} />
+                                        <Input label="ROLE" value={exp.role} onChange={e => handleNestedChange('experience', idx, 'role', e.target.value)} />
                                     </div>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center px-1">
-                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Key Accomplishments</label>
-                                            <Button onClick={() => handleGenerateAI('responsibilities', '', idx)} isLoading={loadingSection === `responsibilities-${idx}`} className="h-8 text-[9px] px-4 bg-indigo-50 text-indigo-600 border-none">Optimize with AI</Button>
-                                        </div>
-                                        <Textarea rows={3} value={exp.responsibilities} onChange={e => handleNestedChange('experience', idx, 'responsibilities', e.target.value)} className="!rounded-xl" />
-                                    </div>
+                                    <Textarea rows={3} label="RESPONSIBILITIES" value={exp.responsibilities} onChange={e => handleNestedChange('experience', idx, 'responsibilities', e.target.value)} />
                                 </div>
                             ))}
                         </div>
-                    </section>
+                    </motion.section>
                 </div>
 
-                <div ref={previewContainerRef} className={`sticky top-24 ${activeTab === 'edit' ? 'hidden lg:block' : 'block'}`}>
-                    <div className="glass-panel p-8 rounded-[50px] shadow-3d border-t-2 border-l-2 border-white/40 overflow-hidden flex flex-col items-center">
-                        <div className="w-full h-[calc(100vh-16rem)] overflow-y-auto custom-scrollbar flex flex-col items-center pt-8 pb-32">
-                            <ResumePreviewContent />
+                <div className="sticky top-24 hidden lg:block">
+                    <motion.div 
+                        ref={previewContainerRef}
+                        onMouseMove={handleMouseMove}
+                        onMouseLeave={handleMouseLeave}
+                        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+                        className="glass-panel p-8 rounded-[50px] shadow-3d border-t-2 border-l-2 border-white/40 overflow-hidden flex flex-col items-center cursor-default h-[calc(100vh-14rem)]"
+                    >
+                        <div className="w-full overflow-y-auto custom-scrollbar flex justify-center py-8">
+                            <motion.div 
+                                id="resume-export-area"
+                                style={{ 
+                                    width: '794px', 
+                                    minHeight: '1123px', 
+                                    padding: '64px', 
+                                    scale: previewScale,
+                                    transformOrigin: 'top center',
+                                    translateZ: "50px"
+                                }}
+                                className="bg-white text-slate-900 shadow-2xl shadow-black/20"
+                            >
+                                <header className="text-center mb-10">
+                                    <h1 className="text-5xl font-black text-slate-950 tracking-tighter uppercase mb-4">{resume.fullName || 'YOUR IDENTITY'}</h1>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em]">{resume.email} {resume.phone ? `| ${resume.phone}` : ''}</p>
+                                    {resume.linkedin && <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest mt-2">{resume.linkedin}</p>}
+                                </header>
+                                <div className="space-y-8">
+                                    {resume.summary && (
+                                        <section>
+                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">Summary</h2>
+                                            <p className="text-sm font-medium text-slate-700 leading-relaxed whitespace-pre-wrap">{resume.summary}</p>
+                                        </section>
+                                    )}
+                                    {resume.experience.length > 0 && (
+                                        <section>
+                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">Experience</h2>
+                                            {resume.experience.map(exp => (
+                                                <div key={exp.id} className="mb-6">
+                                                    <div className="flex justify-between items-baseline">
+                                                        <h4 className="font-bold text-slate-900">{exp.role}</h4>
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{exp.startDate} - {exp.endDate || 'Present'}</span>
+                                                    </div>
+                                                    <p className="text-[12px] font-black text-indigo-600 uppercase tracking-tighter mb-2">{exp.company}</p>
+                                                    <p className="text-[13px] text-slate-600 mt-1 whitespace-pre-wrap leading-relaxed">{exp.responsibilities}</p>
+                                                </div>
+                                            ))}
+                                        </section>
+                                    )}
+                                    {resume.skills && (
+                                        <section>
+                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">Skills & Tech</h2>
+                                            <p className="text-[13px] font-medium text-slate-700">{resume.skills}</p>
+                                        </section>
+                                    )}
+                                </div>
+                            </motion.div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
         </div>

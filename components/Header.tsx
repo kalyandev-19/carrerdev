@@ -9,8 +9,6 @@ interface HeaderProps {
   user: User;
   onLogout: () => void;
   onShowLogin: () => void;
-  isDark: boolean;
-  toggleTheme: () => void;
 }
 
 const NavLink: React.FC<{
@@ -24,10 +22,10 @@ const NavLink: React.FC<{
   return (
     <button
       onClick={() => navigateTo(page)}
-      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+      className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${
         isActive
-          ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
-          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+          ? 'text-indigo-400 bg-indigo-900/30 shadow-inner-soft'
+          : 'text-slate-400 hover:text-indigo-400'
       }`}
     >
       {children}
@@ -35,53 +33,47 @@ const NavLink: React.FC<{
   );
 };
 
-const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout, isDark, toggleTheme }) => {
+const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout }) => {
   const initials = user.fullName ? user.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
 
   return (
-    <header className="bg-white dark:bg-slate-900 sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="fixed top-0 left-0 right-0 z-50 px-4 py-4 pointer-events-none">
+      <nav className="container mx-auto max-w-7xl pointer-events-auto">
+        <div className="glass-panel !bg-slate-950/70 backdrop-blur-xl border border-white/5 h-20 rounded-[30px] px-8 flex items-center justify-between shadow-3d">
           <div className="flex items-center cursor-pointer group shrink-0" onClick={() => navigateTo(Page.Home)}>
-            <div className="bg-indigo-600 p-1.5 rounded-lg shadow-sm">
-              <Icon name="logo" className="h-5 w-5 text-white" />
+            <div className="bg-indigo-600 p-2 rounded-xl shadow-lg tilt-card">
+              <Icon name="logo" className="h-6 w-6 text-white" />
             </div>
-            <div className="ml-2.5 flex flex-col justify-center">
-              <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight leading-none">CareerDev</span>
+            <div className="ml-3 flex flex-col justify-center">
+              <span className="text-xl font-black text-white tracking-tighter leading-none">CareerDev</span>
+              <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mt-1">AI Powered</span>
             </div>
           </div>
           
-          <div className="hidden lg:flex items-center space-x-1">
+          <div className="hidden lg:flex items-center space-x-2">
             <NavLink page={Page.Home} currentPage={currentPage} navigateTo={navigateTo}>Dashboard</NavLink>
-            <NavLink page={Page.ResumeBuilder} currentPage={currentPage} navigateTo={navigateTo}>Resume Editor</NavLink>
-            <NavLink page={Page.Chat} currentPage={currentPage} navigateTo={navigateTo}>Career AI</NavLink>
+            <NavLink page={Page.ResumeBuilder} currentPage={currentPage} navigateTo={navigateTo}>Editor</NavLink>
+            <NavLink page={Page.Chat} currentPage={currentPage} navigateTo={navigateTo}>AI Agent</NavLink>
+            <NavLink page={Page.IndustryQA} currentPage={currentPage} navigateTo={navigateTo}>Insights</NavLink>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              aria-label="Toggle Theme"
-            >
-              {isDark ? <Icon name="sun" className="h-5 w-5" /> : <Icon name="moon" className="h-5 w-5" />}
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="h-8 w-px bg-slate-800 mx-1 hidden sm:block"></div>
 
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block"></div>
-
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex flex-col items-end mr-1">
-                <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate max-w-[120px]">
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex flex-col items-end">
+                <span className="text-xs font-black text-white leading-tight truncate max-w-[120px] uppercase tracking-tighter">
                   {user.fullName}
                 </span>
                 <button 
                   onClick={onLogout}
-                  className="text-[10px] text-slate-400 hover:text-rose-500 transition-colors font-semibold"
+                  className="text-[9px] text-slate-400 hover:text-rose-500 transition-colors font-black uppercase tracking-widest"
                 >
-                  Logout
+                  Terminate
                 </button>
               </div>
               
-              <div className="h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm bg-indigo-600">
+              <div className="h-10 w-10 rounded-2xl flex items-center justify-center text-white font-black text-sm shadow-xl bg-indigo-600 ring-4 ring-indigo-500/10 tilt-card">
                 {initials}
               </div>
             </div>
