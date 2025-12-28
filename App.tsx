@@ -91,99 +91,121 @@ const Home = ({ navigateTo, user, onEditResume }: { navigateTo: (page: Page) => 
 
   return (
     <div className="relative" ref={containerRef}>
-      <BackgroundPaths className="opacity-20 fixed inset-0 z-0" />
-      <div className="relative z-10 py-4">
+      <BackgroundPaths className="opacity-10 fixed inset-0 z-0" />
+      <div className="relative z-10 py-4 px-2 sm:px-4">
         {/* Hero Section */}
         <motion.div 
           style={{ opacity: heroOpacity, scale: heroScale }}
-          className="w-full mx-auto rounded-[50px] h-[40rem] overflow-hidden relative mb-16 shadow-3d bg-slate-950"
+          className="w-full mx-auto rounded-[30px] md:rounded-[50px] min-h-[35rem] md:h-[40rem] overflow-hidden relative mb-12 md:mb-16 shadow-3d bg-slate-950"
         >
-          <Vortex backgroundColor="transparent" particleCount={300} className="flex items-center flex-col justify-center w-full h-full relative z-10">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto text-center space-y-8 glass-panel !bg-black/20 p-12 rounded-[60px] border-white/10">
-              <div className="inline-flex items-center gap-2 px-6 py-2 bg-indigo-600/20 rounded-full border border-indigo-500/30 text-indigo-400 text-[10px] font-black uppercase tracking-[0.3em]">
+          <Vortex backgroundColor="transparent" particleCount={200} className="flex items-center flex-col justify-center w-full h-full relative z-10 px-4 md:px-0">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              className="max-w-4xl mx-auto text-center space-y-6 md:space-y-8 glass-panel !bg-black/40 p-6 md:p-12 rounded-[40px] md:rounded-[60px] border-white/10"
+            >
+              <div className="inline-flex items-center gap-2 px-4 md:px-6 py-1.5 md:py-2 bg-indigo-600/30 rounded-full border border-indigo-500/30 text-indigo-300 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em]">
                  Career Intelligence v3.0
               </div>
-              <h2 className="text-white text-4xl md:text-7xl font-black tracking-tighter leading-none">
+              <h2 className="text-white text-3xl md:text-7xl font-black tracking-tighter leading-tight md:leading-none">
                 AI Powered Career <br/>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Dashboard.</span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center mt-8">
-                <div className="text-left space-y-6">
-                  <p className="text-white/70 text-lg font-medium">Elevate your professional trajectory with expert tools and neural guidance.</p>
-                  <button onClick={() => navigateTo(Page.ResumeBuilder)} className="btn-3d px-10 py-4 rounded-2xl text-white font-black uppercase tracking-widest text-xs">Get Started</button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mt-6 md:mt-8">
+                <div className="text-center md:text-left space-y-4 md:space-y-6">
+                  <p className="text-white/80 text-sm md:text-lg font-medium leading-relaxed">
+                    Elevate your professional trajectory with expert tools and neural guidance.
+                  </p>
+                  <button onClick={() => navigateTo(Page.ResumeBuilder)} className="btn-3d w-full md:w-auto px-8 py-3.5 md:px-10 md:py-4 rounded-2xl text-white font-black uppercase tracking-widest text-[10px] md:text-xs">
+                    Get Started
+                  </button>
                 </div>
-                <MorphingCardStack cards={roadmapData} className="relative z-10" />
+                <div className="hidden md:block relative z-10">
+                  <MorphingCardStack cards={roadmapData} className="relative" />
+                </div>
               </div>
             </motion.div>
           </Vortex>
         </motion.div>
 
         {/* Dashboard Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 px-4 mb-24 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 mb-24 relative z-10">
           {/* AI STRATEGY HUB */}
-          <div className="glass-panel rounded-[50px] p-8 border border-indigo-500/20 shadow-3d relative overflow-hidden group">
-            <div className="flex items-center gap-4 mb-10">
-              <div className="p-3 bg-indigo-600/20 rounded-2xl border border-indigo-500/30"><Icon name="chat" className="h-6 w-6 text-indigo-400" /></div>
+          <div className="glass-panel rounded-[30px] md:rounded-[50px] p-6 md:p-8 border border-indigo-500/20 shadow-3d relative overflow-hidden group">
+            <div className="flex items-center gap-3 md:gap-4 mb-8 md:mb-10">
+              <div className="p-2.5 md:p-3 bg-indigo-600/20 rounded-2xl border border-indigo-500/30">
+                <Icon name="chat" className="h-5 w-5 md:h-6 md:h-6 text-indigo-400" />
+              </div>
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight">AI Career Strategy</h2>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Insights & Consulting</p>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">AI Career Strategy</h2>
+                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">Insights & Consulting</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
               <Card title="AI Career Chat" description="Consult with your personal career assistant." icon={<Icon name="chat" />} onClick={() => navigateTo(Page.Chat)} glowColor="blue" />
               <Card title="Industry Insights" description="Live job trends and salary benchmarks." icon={<Icon name="qa" />} onClick={() => navigateTo(Page.IndustryQA)} glowColor="orange" />
             </div>
           </div>
 
           {/* PROFESSIONAL WORKSPACE */}
-          <div className="glass-panel rounded-[50px] p-8 border border-emerald-500/10 shadow-3d relative overflow-hidden">
-            <div className="flex items-center gap-4 mb-10">
-              <div className="p-3 bg-emerald-600/20 rounded-2xl border border-emerald-500/30"><Icon name="resume" className="h-6 w-6 text-emerald-400" /></div>
+          <div className="glass-panel rounded-[30px] md:rounded-[50px] p-6 md:p-8 border border-emerald-500/10 shadow-3d relative overflow-hidden">
+            <div className="flex items-center gap-3 md:gap-4 mb-8 md:mb-10">
+              <div className="p-2.5 md:p-3 bg-emerald-600/20 rounded-2xl border border-emerald-500/30">
+                <Icon name="resume" className="h-5 w-5 md:h-6 md:h-6 text-emerald-400" />
+              </div>
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight">Professional Workspace</h2>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Document Management</p>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">Professional Workspace</h2>
+                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">Document Management</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
               <Card title="Resume Builder" description="Engineer high-impact documents." icon={<Icon name="resume" />} onClick={() => navigateTo(Page.ResumeBuilder)} glowColor="purple" />
               <Card title="AI Analysis" description="Diagnostic audit of your professional files." icon={<Icon name="analyzer" />} onClick={() => navigateTo(Page.ResumeAnalyzer)} glowColor="green" />
             </div>
 
             {/* My Saved Resumes */}
-            <div className="mb-10">
-              <h3 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400 mb-6">My Saved Resumes</h3>
-              <div className="space-y-3 max-h-[250px] overflow-y-auto custom-scrollbar">
-                {resumes.map((res) => (
-                  <div key={res.id} className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Icon name="resume" className="h-5 w-5 text-indigo-400" />
-                      <div>
-                        <h5 className="text-sm font-bold text-white uppercase truncate max-w-[150px]">{res.title}</h5>
-                        <p className="text-[8px] font-black text-slate-500 uppercase">{new Date(res.updatedAt || '').toLocaleDateString()}</p>
+            <div className="mb-8 md:mb-10">
+              <h3 className="text-[9px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 mb-4 md:mb-6 px-2">My Saved Resumes</h3>
+              <div className="space-y-3 max-h-[250px] overflow-y-auto custom-scrollbar px-2">
+                {resumes.length === 0 ? (
+                  <p className="text-[10px] text-slate-600 uppercase font-black tracking-widest italic py-4">No documents synchronized yet.</p>
+                ) : (
+                  resumes.map((res) => (
+                    <div key={res.id} className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
+                        <Icon name="resume" className="h-4 w-4 md:h-5 md:w-5 text-indigo-400 shrink-0" />
+                        <div className="min-w-0">
+                          <h5 className="text-xs md:text-sm font-bold text-white uppercase truncate">{res.title}</h5>
+                          <p className="text-[7px] md:text-[8px] font-black text-slate-500 uppercase">{new Date(res.updatedAt || '').toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 md:gap-2 shrink-0">
+                        <button onClick={() => onEditResume(res.id!)} className="p-1.5 md:p-2 hover:bg-indigo-600 rounded-lg transition-colors"><Icon name="edit" className="h-3 w-3 md:h-3.5 md:w-3.5" /></button>
+                        <button onClick={(e) => handleDeleteResume(res.id!, e)} className="p-1.5 md:p-2 hover:bg-rose-600 rounded-lg transition-colors"><Icon name="trash" className="h-3 w-3 md:h-3.5 md:w-3.5" /></button>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => onEditResume(res.id!)} className="p-2 hover:bg-indigo-600 rounded-lg"><Icon name="edit" className="h-3.5 w-3.5" /></button>
-                      <button onClick={(e) => handleDeleteResume(res.id!, e)} className="p-2 hover:bg-rose-600 rounded-lg"><Icon name="trash" className="h-3.5 w-3.5" /></button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
             {/* Cloud Archives */}
-            <div>
-              <h3 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400 mb-6">Recent Cloud History</h3>
+            <div className="px-2">
+              <h3 className="text-[9px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 mb-4 md:mb-6">Recent Cloud History</h3>
               <div className="space-y-3">
-                {downloads.slice(0, 3).map((dl) => (
-                  <div key={dl.id} className="bg-slate-900/30 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Icon name="save" className="h-4 w-4 text-emerald-400" />
-                      <h5 className="text-[11px] font-bold text-slate-200 uppercase truncate max-w-[140px]">{dl.file_name}</h5>
+                {downloads.length === 0 ? (
+                  <p className="text-[10px] text-slate-600 uppercase font-black tracking-widest italic py-2">Historical data empty.</p>
+                ) : (
+                  downloads.slice(0, 3).map((dl) => (
+                    <div key={dl.id} className="bg-slate-900/30 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <Icon name="save" className="h-4 w-4 text-emerald-400 shrink-0" />
+                        <h5 className="text-[10px] md:text-[11px] font-bold text-slate-200 uppercase truncate">{dl.file_name}</h5>
+                      </div>
+                      <a href={dl.file_url} target="_blank" rel="noreferrer" className="px-3 md:px-4 py-1.5 bg-slate-800 hover:bg-indigo-700 rounded-lg text-[7px] md:text-[8px] font-black uppercase transition-colors shrink-0">View</a>
                     </div>
-                    <a href={dl.file_url} target="_blank" rel="noreferrer" className="px-4 py-1.5 bg-slate-800 hover:bg-indigo-700 rounded-lg text-[8px] font-black uppercase">View</a>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>

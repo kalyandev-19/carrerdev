@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CareerDev AI | 3D Spatial Intelligence</title>
+    <title>CareerDev AI | Professional Intelligence</title>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -21,15 +21,6 @@
               '3d': '0 20px 50px rgba(0,0,0,0.1), 0 5px 15px rgba(0,0,0,0.05)',
               '3d-hover': '0 30px 60px rgba(0,0,0,0.12), 0 10px 20px rgba(0,0,0,0.08)',
               'inner-soft': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
-            },
-            animation: {
-              grid: "grid 15s linear infinite",
-            },
-            keyframes: {
-              grid: {
-                "0%": { transform: "translateY(-50%)" },
-                "100%": { transform: "translateY(0)" },
-              },
             },
           }
         }
@@ -52,6 +43,7 @@
         perspective: 1200px;
         background: var(--depth-bg);
         color: var(--color-text-primary);
+        overflow-x: hidden;
       }
       
       .glass-panel {
@@ -83,11 +75,17 @@
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
+      /* Default print hiding */
       .print-only {
-        display: none;
+        display: none !important;
       }
 
       @media print {
+        @page {
+          size: A4;
+          margin: 0;
+        }
+        
         body {
           background: white !important;
           color: black !important;
@@ -102,22 +100,29 @@
         .print-only {
           display: block !important;
           position: absolute !important;
-          left: 0 !important;
           top: 0 !important;
-          width: 100% !important;
-          z-index: 9999 !important;
+          left: 0 !important;
+          width: 210mm !important;
+          min-height: 297mm !important;
+          z-index: 10000 !important;
+          background: white !important;
         }
 
         #resume-export-area {
+          display: block !important;
           background: white !important;
-          width: 210mm !important;
-          min-height: 297mm !important;
+          width: 100% !important;
           padding: 20mm !important;
-          margin: 0 auto !important;
+          margin: 0 !important;
           box-shadow: none !important;
+          border: none !important;
         }
 
-        /* Force colors in print */
+        #root {
+          display: block !important;
+          background: white !important;
+        }
+
         * {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;

@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, type ReactNode } from "react"
@@ -96,7 +95,7 @@ export function MorphingCardStack({
   }
 
   const containerStyles = {
-    stack: "relative h-64 w-64",
+    stack: "relative h-56 md:h-64 w-56 md:w-64",
     grid: "grid grid-cols-2 gap-3",
     list: "flex flex-col gap-3",
   }
@@ -105,7 +104,7 @@ export function MorphingCardStack({
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Layout Toggle */}
+      {/* Layout Toggle - Hidden on very small screens to save space if needed */}
       <div className="flex items-center justify-center gap-1 rounded-lg bg-slate-900/50 p-1 w-fit mx-auto border border-white/5">
         {(Object.keys(layoutIcons) as LayoutMode[]).map((mode) => {
           const Icon = layoutIcons[mode]
@@ -165,9 +164,9 @@ export function MorphingCardStack({
                     onCardClick?.(card)
                   }}
                   className={cn(
-                    "cursor-pointer rounded-xl border border-white/10 bg-slate-900/80 p-4 backdrop-blur-sm",
+                    "cursor-pointer rounded-xl border border-white/10 bg-slate-900/90 p-3 md:p-4 backdrop-blur-md shadow-xl",
                     "hover:border-indigo-500/50 transition-colors",
-                    layout === "stack" && "absolute w-56 h-48",
+                    layout === "stack" && "absolute w-48 md:w-56 h-40 md:h-48",
                     layout === "stack" && isTopCard && "cursor-grab active:cursor-grabbing",
                     layout === "grid" && "w-full aspect-square",
                     layout === "list" && "w-full",
@@ -177,17 +176,18 @@ export function MorphingCardStack({
                     backgroundColor: card.color || undefined,
                   }}
                 >
-                  <div className="flex items-start gap-3">
-                    {card.icon && (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600/20 text-indigo-400">
-                        {card.icon}
+                  <div className="flex items-start gap-2 md:gap-3">
+                    {/* Fix: Added React.isValidElement check and type assertion to any to resolve TS error with className property during cloning */}
+                    {card.icon && React.isValidElement(card.icon) && (
+                      <div className="flex h-8 w-8 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600/20 text-indigo-400">
+                        {React.cloneElement(card.icon as React.ReactElement<any>, { className: "h-4 w-4 md:h-5 md:w-5" })}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-white truncate">{card.title}</h3>
+                      <h3 className="text-xs md:text-sm font-semibold text-white truncate leading-tight">{card.title}</h3>
                       <p
                         className={cn(
-                          "text-xs text-slate-400 mt-1",
+                          "text-[9px] md:text-xs text-slate-400 mt-0.5 md:mt-1 font-medium",
                           layout === "stack" && "line-clamp-3",
                           layout === "grid" && "line-clamp-2",
                           layout === "list" && "line-clamp-1",
@@ -200,7 +200,7 @@ export function MorphingCardStack({
 
                   {isTopCard && (
                     <div className="absolute bottom-2 left-0 right-0 text-center">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500/50">Swipe to navigate</span>
+                      <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-500/50">Swipe to navigate</span>
                     </div>
                   )}
                 </motion.div>
@@ -217,8 +217,8 @@ export function MorphingCardStack({
               key={index}
               onClick={() => setActiveIndex(index)}
               className={cn(
-                "h-1.5 rounded-full transition-all",
-                index === activeIndex ? "w-4 bg-indigo-500" : "w-1.5 bg-slate-700 hover:bg-slate-600",
+                "h-1 md:h-1.5 rounded-full transition-all",
+                index === activeIndex ? "w-3 md:w-4 bg-indigo-500" : "w-1 md:w-1.5 bg-slate-700 hover:bg-slate-600",
               )}
               aria-label={`Go to card ${index + 1}`}
             />

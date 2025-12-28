@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import { User, ResumeData } from '../types';
+import { User, ResumeData } from '../types.ts';
 
 /**
  * SQL SCHEMA FOR SUPABASE SETUP
