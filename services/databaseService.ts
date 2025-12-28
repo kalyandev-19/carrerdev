@@ -7,6 +7,7 @@ import { User, ResumeData } from '../types';
  * ----------------------------
  * Run this in your Supabase SQL Editor:
  * 
+ * -- 1. Resumes Table
  * CREATE TABLE IF NOT EXISTS public.resumes (
  *     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
  *     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -24,9 +25,22 @@ import { User, ResumeData } from '../types';
  *     updated_at TIMESTAMPTZ DEFAULT now()
  * );
  * 
+ * -- 2. Downloads/History Table
+ * CREATE TABLE IF NOT EXISTS public.user_downloads (
+ *     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+ *     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+ *     file_name TEXT NOT NULL,
+ *     file_url TEXT NOT NULL,
+ *     created_at TIMESTAMPTZ DEFAULT now()
+ * );
+ * 
+ * -- 3. Storage Bucket: Ensure a bucket named 'downloads' exists and is set to Public
+ * 
  * ALTER TABLE public.resumes ENABLE ROW LEVEL SECURITY;
- * CREATE POLICY "Users can manage their own resumes" ON public.resumes 
- * FOR ALL USING (auth.uid() = user_id);
+ * CREATE POLICY "Users can manage their own resumes" ON public.resumes FOR ALL USING (auth.uid() = user_id);
+ * 
+ * ALTER TABLE public.user_downloads ENABLE ROW LEVEL SECURITY;
+ * CREATE POLICY "Users can view their own downloads" ON public.user_downloads FOR ALL USING (auth.uid() = user_id);
  */
 
 const SUPABASE_URL = 'https://beerzpfihrilduvhkqdo.supabase.co';
@@ -47,8 +61,6 @@ export const databaseService = {
 
     if (authError) throw authError;
     if (!authData.user) throw new Error('User creation failed');
-
-    // Profile is created via SQL trigger on auth.users insert in a standard setup
     return { userId: authData.user.id };
   },
 
@@ -61,7 +73,6 @@ export const databaseService = {
     if (authError) throw authError;
     if (!authData.user) throw new Error('Login failed');
 
-    // Get profile info
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name')
@@ -75,7 +86,6 @@ export const databaseService = {
     };
   },
 
-  // Fix: Added missing verifyOtp method to handle user verification after signup
   verifyOtp: async (email: string, token: string): Promise<User> => {
     const { data, error } = await supabase.auth.verifyOtp({
       email,
@@ -86,7 +96,6 @@ export const databaseService = {
     if (error) throw error;
     if (!data.user) throw new Error('Verification failed');
 
-    // Get profile info
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name')
@@ -151,6 +160,8 @@ export const databaseService = {
   },
 
   getResume: async (resumeId: string): Promise<ResumeData | null> => {
+    if (!resumeId) return null;
+    
     if (resumeId.startsWith('guest-')) {
         const localData = localStorage.getItem('careerdev_guest_resumes_collection');
         if (!localData) return null;
@@ -200,7 +211,6 @@ export const databaseService = {
       return toSave;
     }
 
-    // Mapping frontend (camelCase) to backend (snake_case)
     const payload: any = {
       user_id: resume.userId,
       title: resume.title,
@@ -215,7 +225,6 @@ export const databaseService = {
       skills: resume.skills,
     };
 
-    // If ID exists and is a valid UUID, include it for upsert
     if (resume.id && isValidUUID(resume.id)) {
       payload.id = resume.id;
     }
@@ -226,10 +235,7 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) {
-      console.error("Supabase Save Error:", error);
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
     
     return {
         id: data.id,
@@ -249,6 +255,7 @@ export const databaseService = {
   },
 
   deleteResume: async (resumeId: string): Promise<void> => {
+    if (!resumeId) return;
     if (resumeId.startsWith('guest-')) {
         const localData = localStorage.getItem('careerdev_guest_resumes_collection');
         if (!localData) return;
@@ -256,10 +263,61 @@ export const databaseService = {
         localStorage.setItem('careerdev_guest_resumes_collection', JSON.stringify(collection.filter(r => r.id !== resumeId)));
         return;
     }
-
     if (!isValidUUID(resumeId)) return;
-
     const { error } = await supabase.from('resumes').delete().eq('id', resumeId);
     if (error) throw error;
+  },
+
+  // --- NEW: Storage & History Methods ---
+  
+  uploadAndRecordPDF: async (file: File | Blob, userId: string): Promise<string> => {
+    if (!userId || userId === 'guest-user') {
+        throw new Error("Authentication required to save files to cloud.");
+    }
+
+    const fileName = `${Date.now()}_${(file as File).name || 'resume.pdf'}`;
+
+    // 1. Upload the file to Supabase Storage
+    const { data: storageData, error: storageError } = await supabase
+      .storage
+      .from('downloads')
+      .upload(`pdfs/${fileName}`, file);
+
+    if (storageError) throw storageError;
+
+    // 2. Get the Public URL
+    const { data: { publicUrl } } = supabase
+      .storage
+      .from('downloads')
+      .getPublicUrl(`pdfs/${fileName}`);
+
+    // 3. Save the reference in Database Table
+    const { error: dbError } = await supabase
+      .from('user_downloads')
+      .insert([
+        { 
+          user_id: userId, 
+          file_name: (file as File).name || 'resume.pdf', 
+          file_url: publicUrl 
+        }
+      ]);
+
+    if (dbError) throw dbError;
+    
+    return publicUrl;
+  },
+
+  getUserDownloads: async (userId: string) => {
+    if (!userId || userId === 'guest-user') return [];
+    if (!isValidUUID(userId)) return [];
+
+    const { data, error } = await supabase
+      .from('user_downloads')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) return [];
+    return data || [];
   }
 };

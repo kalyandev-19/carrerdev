@@ -63,6 +63,7 @@ const IndustryQA: React.FC = () => {
             setConversation(prev => [...prev, modelMessage]);
 
             for await (const chunk of stream) {
+                if (!chunk) continue;
                 fullText += (chunk.text || "");
                 
                 const metadata = chunk.candidates?.[0]?.groundingMetadata;

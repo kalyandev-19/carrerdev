@@ -81,7 +81,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
     };
 
     const handleExport = async () => {
-        // Force save to ensure record is in Supabase resumes table
         setIsSaving(true);
         setSaveStatus('saving');
         try {
@@ -94,10 +93,10 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         }
         
         const originalTitle = document.title;
-        const fileName = `${resume.fullName.replace(/\s+/g, '_')}_Resume`;
+        const fileName = `${(resume.fullName || 'User').replace(/\s+/g, '_')}_Resume`;
         document.title = fileName;
         
-        // Wait for page title to update, then trigger browser print
+        // Brief delay to ensure styles and title are applied
         setTimeout(() => {
             window.print();
             document.title = originalTitle;
@@ -144,20 +143,22 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
     };
 
     const handleNestedChange = <T extends 'education' | 'experience',>(section: T, index: number, field: string, value: string) => {
-        const sectionCopy = [...resume[section]] as any[];
-        sectionCopy[index][field] = value;
-        handleChange(section, sectionCopy as any);
+        const sectionCopy = [...(resume[section] || [])] as any[];
+        if (sectionCopy[index]) {
+            sectionCopy[index][field] = value;
+            handleChange(section, sectionCopy as any);
+        }
     };
 
     const addEntry = (section: 'education' | 'experience') => {
         const newEntry = section === 'education'
             ? { id: `edu${Date.now()}`, school: '', degree: '', startDate: '', endDate: '', gpa: '' }
             : { id: `exp${Date.now()}`, company: '', role: '', startDate: '', endDate: '', responsibilities: '' };
-        handleChange(section, [...resume[section], newEntry] as any);
+        handleChange(section, [...(resume[section] || []), newEntry] as any);
     };
 
     const removeEntry = (section: 'education' | 'experience', index: number) => {
-        const sectionCopy = [...resume[section]];
+        const sectionCopy = [...(resume[section] || [])];
         sectionCopy.splice(index, 1);
         handleChange(section, sectionCopy as any);
     };
@@ -168,7 +169,8 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
             prompt = `Write a professional summary for a student's resume. Name: ${resume.fullName}. Key skills: ${resume.skills}. Focus on industry value.`;
             setLoadingSection('summary');
         } else if (section === 'responsibilities' && typeof index === 'number') {
-            const exp = resume.experience[index];
+            const exp = (resume.experience || [])[index];
+            if (!exp) return;
             prompt = `Write 3 STAR method bullet points for ${exp.role} at ${exp.company}. High impact.`;
             setLoadingSection(`responsibilities-${index}`);
         }
@@ -178,13 +180,16 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
             const stream = generateResumeSectionStream(prompt);
             let fullText = "";
             for await (const chunk of stream) {
+                if (!chunk) continue;
                 fullText += chunk;
                 if (section === 'summary') {
                     setResume(prev => ({ ...prev, summary: fullText }));
                 } else if (section === 'responsibilities' && typeof index === 'number') {
                     setResume(prev => {
-                        const nextExp = [...prev.experience];
-                        nextExp[index] = { ...nextExp[index], responsibilities: fullText };
+                        const nextExp = [...(prev.experience || [])];
+                        if (nextExp[index]) {
+                            nextExp[index] = { ...nextExp[index], responsibilities: fullText };
+                        }
                         return { ...prev, experience: nextExp };
                     });
                 }
@@ -197,17 +202,21 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         <div 
             id={printMode ? "resume-export-area" : undefined}
             style={{ 
-                width: '794px', 
-                minHeight: '1123px', 
-                padding: '64px', 
+                width: printMode ? '210mm' : '794px', 
+                minHeight: printMode ? '297mm' : '1123px', 
+                boxSizing: 'border-box',
+                padding: printMode ? '15mm' : '64px', 
                 scale: printMode ? undefined : previewScale,
                 transformOrigin: 'top center',
                 transform: printMode ? undefined : "translateZ(50px)",
+                display: 'block',
+                visibility: 'visible',
+                backgroundColor: 'white',
             }}
-            className={`bg-white text-slate-900 ${printMode ? 'print-only' : 'shadow-2xl shadow-black/20'}`}
+            className={`text-slate-900 ${!printMode ? 'shadow-2xl shadow-black/20' : ''}`}
         >
-            <header className="text-center mb-12">
-                <h1 className="text-5xl font-black text-slate-950 tracking-tighter uppercase mb-4">{resume.fullName || 'YOUR NAME'}</h1>
+            <header className="text-center mb-8">
+                <h1 className="text-5xl font-black text-slate-950 tracking-tighter uppercase mb-4 leading-tight">{resume.fullName || 'YOUR NAME'}</h1>
                 <div className="flex flex-wrap justify-center gap-4 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">
                     <span>{resume.email}</span>
                     {resume.phone && <span>| {resume.phone}</span>}
@@ -215,7 +224,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                     {resume.github && <span className="text-slate-600">{resume.github}</span>}
                 </div>
             </header>
-            <div className="space-y-12">
+            <div className="space-y-10">
                 {resume.summary && (
                     <section>
                         <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Professional Summary</h2>
@@ -223,7 +232,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                     </section>
                 )}
 
-                {resume.education.length > 0 && (
+                {resume.education && resume.education.length > 0 && (
                     <section>
                         <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Education</h2>
                         <div className="space-y-6">
@@ -243,17 +252,17 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                     </section>
                 )}
 
-                {resume.experience.length > 0 && (
+                {resume.experience && resume.experience.length > 0 && (
                     <section>
                         <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Experience</h2>
-                        <div className="space-y-10">
+                        <div className="space-y-8">
                             {resume.experience.map(exp => (
                                 <div key={exp.id}>
                                     <div className="flex justify-between items-baseline mb-1">
                                         <h4 className="font-black text-slate-950 text-base">{exp.role}</h4>
                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{exp.startDate} - {exp.endDate || 'Present'}</span>
                                     </div>
-                                    <p className="text-xs font-black text-indigo-600 uppercase tracking-tighter mb-4">{exp.company}</p>
+                                    <p className="text-xs font-black text-indigo-600 uppercase tracking-tighter mb-2">{exp.company}</p>
                                     <p className="text-[13px] text-slate-600 whitespace-pre-wrap leading-relaxed border-l-2 border-slate-100 pl-6">{exp.responsibilities}</p>
                                 </div>
                             ))}
@@ -265,11 +274,15 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                     <section>
                         <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Technical Proficiencies</h2>
                         <div className="flex flex-wrap gap-2">
-                            {resume.skills.split(',').map((skill, i) => (
-                                <span key={i} className="text-[10px] font-black uppercase tracking-widest bg-slate-50 text-slate-700 px-4 py-1.5 rounded-md border border-slate-100">
-                                    {skill.trim()}
-                                </span>
-                            ))}
+                            {(resume.skills || "").split(',').map((skill, i) => {
+                                const trimmed = skill.trim();
+                                if (!trimmed) return null;
+                                return (
+                                    <span key={i} className="text-[10px] font-black uppercase tracking-widest bg-slate-50 text-slate-700 px-4 py-1.5 rounded-md border border-slate-100">
+                                        {trimmed}
+                                    </span>
+                                );
+                            })}
                         </div>
                     </section>
                 )}
@@ -279,7 +292,10 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
 
     return (
         <div className="py-8">
-            <ResumeContent printMode={true} />
+            {/* Hidden container specifically for printing */}
+            <div className="print-only">
+              <ResumeContent printMode={true} />
+            </div>
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 no-print">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
@@ -339,7 +355,20 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                             <Input label="PHONE" value={resume.phone} onChange={e => handleChange('phone', e.target.value)} />
                             <Input label="LINKEDIN" value={resume.linkedin} onChange={e => handleChange('linkedin', e.target.value)} />
                             <Input label="GITHUB" value={resume.github || ''} onChange={e => handleChange('github', e.target.value)} />
-                            <Input label="SKILLS" value={resume.skills} onChange={e => handleChange('skills', e.target.value)} placeholder="E.G. REACT, TYPESCRIPT" />
+                            <div className="space-y-2">
+                                <Input 
+                                    label="SKILLS" 
+                                    value={resume.skills} 
+                                    onChange={e => handleChange('skills', e.target.value)} 
+                                    placeholder="E.G. REACT, TYPESCRIPT, PYTHON" 
+                                />
+                                <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/5 rounded-xl border border-indigo-500/10">
+                                    <Icon name="sparkles" className="h-3 w-3 text-indigo-400" />
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400">
+                                        Hint: Use commas (,) to separate multiple skills.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </motion.section>
 
@@ -366,7 +395,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                             <button onClick={() => addEntry('education')} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-500 transition-colors">+ Add Credential</button>
                         </div>
                         <div className="space-y-6">
-                            {resume.education.map((edu, idx) => (
+                            {(resume.education || []).map((edu, idx) => (
                                 <div key={edu.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft group/entry">
                                     <button onClick={() => removeEntry('education', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 opacity-0 group-hover/entry:opacity-100 transition-all">
                                         <Icon name="trash" className="h-4 w-4" />
@@ -394,7 +423,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                             <button onClick={() => addEntry('experience')} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-500 transition-colors">+ Add Block</button>
                         </div>
                         <div className="space-y-6">
-                            {resume.experience.map((exp, idx) => (
+                            {(resume.experience || []).map((exp, idx) => (
                                 <div key={exp.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft group/entry">
                                     <button onClick={() => removeEntry('experience', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 opacity-0 group-hover/entry:opacity-100 transition-all">
                                         <Icon name="trash" className="h-4 w-4" />

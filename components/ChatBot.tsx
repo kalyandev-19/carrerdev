@@ -148,6 +148,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
               sessionPromise.then(s => {
                   activeSessionRef.current = s;
                   s.sendRealtimeInput({ media: { data: pcm, mimeType: 'audio/pcm;rate=16000' } });
+              }).catch(err => {
+                console.error("Realtime input failure:", err);
               });
             };
             micSource.connect(processor);
@@ -180,6 +182,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } } },
           systemInstruction: "You are a helpful career advisor. Keep your spoken responses concise and natural."
         }
+      });
+
+      sessionPromise.catch(err => {
+        console.error("Session connection rejected:", err);
+        stopVoiceMode();
       });
 
       const update = () => {

@@ -96,48 +96,69 @@
 
       /* Base hidden class for print elements when on screen */
       .print-only {
-        display: none !important;
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        visibility: hidden;
       }
 
       /* Print Optimization */
       @media print {
-        /* Force high contrast and hide everything by default */
-        body * {
-          visibility: hidden !important;
-          background: none !important;
-          color: black !important;
-        }
-
-        /* Show ONLY the resume area and its children */
-        #resume-export-area, #resume-export-area * {
-          visibility: visible !important;
-          display: block !important;
-        }
-
-        /* Fix the container layout for printing */
-        #resume-export-area {
-          position: absolute !important;
-          left: 0 !important;
-          top: 0 !important;
-          width: 100% !important;
-          min-height: 100% !important;
-          padding: 20mm !important;
-          margin: 0 !important;
-          background: white !important;
-          z-index: 9999 !important;
-          box-shadow: none !important;
-          transform: none !important;
-        }
-
-        /* Prevent unwanted page breaks */
-        section {
-          page-break-inside: avoid !important;
-        }
-
         @page {
           size: A4;
           margin: 0;
         }
+
+        /* Hide entire React root except the specific container we want to print */
+        body {
+          background: white !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          height: auto !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        #root {
+          display: none !important;
+        }
+
+        .print-only {
+          position: static !important;
+          left: 0 !important;
+          visibility: visible !important;
+          display: block !important;
+          width: 210mm !important;
+          margin: 0 auto !important;
+          background: white !important;
+        }
+
+        #resume-export-area {
+          display: block !important;
+          width: 210mm !important;
+          min-height: 297mm !important;
+          padding: 15mm !important;
+          box-sizing: border-box !important;
+          background: white !important;
+          color: black !important;
+          transform: none !important;
+          box-shadow: none !important;
+        }
+
+        /* Ensure all Tailwind generated styles are respected but reset for print colors if needed */
+        #resume-export-area * {
+          visibility: visible !important;
+        }
+
+        section {
+          page-break-inside: avoid !important;
+          margin-bottom: 5mm !important;
+        }
+
+        /* Standardize some colors for print clarity */
+        #resume-export-area h1 { color: #000 !important; }
+        #resume-export-area h2 { border-bottom-color: #eee !important; }
       }
     </style>
   <script type="importmap">

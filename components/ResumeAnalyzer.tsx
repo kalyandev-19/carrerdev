@@ -5,12 +5,14 @@ import Button from './common/Button.tsx';
 import Textarea from './common/Textarea.tsx';
 import Icon from './common/Icon.tsx';
 import { analyzeResumeStream } from '../services/geminiService.ts';
+import { databaseService } from '../services/databaseService.ts';
 
-const ResumeAnalyzer: React.FC = () => {
+const ResumeAnalyzer: React.FC<{ userId?: string }> = ({ userId }) => {
     const [resumeText, setResumeText] = useState<string>('');
-    const [selectedFile, setSelectedFile] = useState<{ data: string, mimeType: string, name: string } | null>(null);
+    const [selectedFile, setSelectedFile] = useState<{ raw: File, data: string, mimeType: string, name: string } | null>(null);
     const [analysis, setAnalysis] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [saveToCloud, setSaveToCloud] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,8 +21,15 @@ const ResumeAnalyzer: React.FC = () => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const res = e.target?.result as string;
-                setSelectedFile({ data: res.split(',')[1], mimeType: file.type || 'application/octet-stream', name: file.name });
-                setResumeText('');
+                if (res && res.includes(',')) {
+                  setSelectedFile({ 
+                      raw: file,
+                      data: res.split(',')[1], 
+                      mimeType: file.type || 'application/octet-stream', 
+                      name: file.name 
+                  });
+                  setResumeText('');
+                }
             };
             reader.readAsDataURL(file);
         }
@@ -30,7 +39,18 @@ const ResumeAnalyzer: React.FC = () => {
         if (!resumeText.trim() && !selectedFile) { setError('Input required.'); return; }
         setIsLoading(true);
         setAnalysis('');
+        setError('');
+        
         try {
+            // Logic to trigger the new uploadAndRecordPDF service if user is logged in
+            if (selectedFile && userId && userId !== 'guest-user' && saveToCloud) {
+                try {
+                    await databaseService.uploadAndRecordPDF(selectedFile.raw, userId);
+                } catch (err) {
+                    console.warn("Cloud backup failed, continuing with analysis:", err);
+                }
+            }
+
             const content = selectedFile ? { data: selectedFile.data, mimeType: selectedFile.mimeType } : resumeText;
             const stream = analyzeResumeStream(content);
             let full = "";
@@ -38,14 +58,18 @@ const ResumeAnalyzer: React.FC = () => {
                 full += chunk;
                 setAnalysis(full);
             }
-        } catch (e) { setError('Analysis protocol failure.'); } finally { setIsLoading(false); }
-    }, [resumeText, selectedFile]);
+        } catch (e) { 
+            setError('Analysis protocol failure.'); 
+        } finally { 
+            setIsLoading(false); 
+        }
+    }, [resumeText, selectedFile, userId, saveToCloud]);
 
     return (
         <div className="max-w-4xl mx-auto py-12 px-6">
             <div className="text-center mb-12">
-                <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Neural Audit</h2>
-                <p className="mt-2 text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">Structural Linguistics Diagnostic</p>
+                <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">AI Resume Analysis</h2>
+                <p className="mt-2 text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">Strategic Diagnostic Dashboard</p>
             </div>
             
             <div className="tilt-card glass-panel p-10 rounded-[50px] shadow-3d border-t-2 border-l-2 border-white/40 relative overflow-hidden">
@@ -63,9 +87,9 @@ const ResumeAnalyzer: React.FC = () => {
                 <div className="space-y-8">
                     {!selectedFile ? (
                         <>
-                            <Textarea rows={6} value={resumeText} onChange={e => setResumeText(e.target.value)} placeholder="INJECT PLAIN TEXT FOR AUDIT..." />
+                            <Textarea rows={6} value={resumeText} onChange={e => setResumeText(e.target.value)} placeholder="PASTE RESUME TEXT FOR ANALYSIS..." />
                             <div className="relative py-4 text-center">
-                                <span className="px-6 bg-white dark:bg-slate-950 text-slate-400 font-black uppercase tracking-[0.5em] text-[10px]">Neural Interface</span>
+                                <span className="px-6 bg-white dark:bg-slate-950 text-slate-400 font-black uppercase tracking-[0.5em] text-[10px]">OR UPLOAD FILE</span>
                                 <div className="absolute inset-0 flex items-center -z-10"><div className="w-full border-t-2 border-slate-100 dark:border-slate-800"></div></div>
                             </div>
                             <label className="flex flex-col items-center justify-center w-full h-40 border-4 border-slate-100 dark:border-slate-800 border-dashed rounded-[40px] cursor-pointer bg-slate-50/50 dark:bg-slate-900/50 hover:bg-white transition-all shadow-inner-soft group">
@@ -78,10 +102,26 @@ const ResumeAnalyzer: React.FC = () => {
                         <div className="bg-indigo-600/5 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-[40px] p-10 flex flex-col items-center gap-4">
                             <Icon name="resume" className="h-12 w-12 text-indigo-600" />
                             <p className="font-black text-slate-900 dark:text-white uppercase tracking-tight">{selectedFile.name}</p>
-                            <button onClick={() => setSelectedFile(null)} className="text-[10px] font-black uppercase tracking-widest text-rose-500">Eject</button>
+                            
+                            {userId && userId !== 'guest-user' && (
+                                <div className="flex items-center gap-3 mt-2">
+                                    <input 
+                                        type="checkbox" 
+                                        id="saveCloud" 
+                                        checked={saveToCloud} 
+                                        onChange={(e) => setSaveToCloud(e.target.checked)}
+                                        className="h-4 w-4 accent-indigo-600"
+                                    />
+                                    <label htmlFor="saveCloud" className="text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer">Save to cloud history</label>
+                                </div>
+                            )}
+
+                            <button onClick={() => setSelectedFile(null)} className="text-[10px] font-black uppercase tracking-widest text-rose-500 mt-2">Eject File</button>
                         </div>
                     )}
-                    <Button onClick={handleAnalyze} isLoading={isLoading} className="w-full py-5 rounded-2xl bg-indigo-600">Execute Audit</Button>
+                    
+                    {error && <p className="text-center text-[10px] font-black uppercase text-rose-500">{error}</p>}
+                    <Button onClick={handleAnalyze} isLoading={isLoading} className="w-full py-5 rounded-2xl bg-indigo-600">Analyze Document</Button>
                 </div>
             </div>
 
@@ -89,7 +129,7 @@ const ResumeAnalyzer: React.FC = () => {
                 <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="mt-16 glass-panel p-12 rounded-[50px] shadow-3d border-t-2 border-l-2 border-white/40">
                     <div className="flex items-center gap-4 mb-8">
                         <div className="h-12 w-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white"><Icon name="analyzer" /></div>
-                        <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Audit Findings</h3>
+                        <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Analysis Results</h3>
                     </div>
                     <div className="prose prose-slate dark:prose-invert max-w-none font-bold text-slate-700 dark:text-slate-200 leading-relaxed">
                         <div dangerouslySetInnerHTML={{ __html: analysis.replace(/\n/g, '<br />') }} />
