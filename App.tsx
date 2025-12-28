@@ -217,14 +217,14 @@ const Home = ({ navigateTo, user, onEditResume, onDownloadResume }: { navigateTo
                   description="Consult with your personal AI assistant for career advice."
                   icon={<Icon name="chat" />}
                   onClick={() => navigateTo(Page.Chat)}
-                  className="bg-slate-900/40 border border-white/5"
+                  glowColor="blue"
                 />
                 <Card
                   title="Industry Insights"
                   description="Get up-to-date data on job trends and salaries."
                   icon={<Icon name="qa" />}
                   onClick={() => navigateTo(Page.IndustryQA)}
-                  className="bg-slate-900/40 border border-white/5"
+                  glowColor="orange"
                 />
               </div>
             </motion.section>
@@ -248,14 +248,14 @@ const Home = ({ navigateTo, user, onEditResume, onDownloadResume }: { navigateTo
                   description="Start fresh with a professional document module."
                   icon={<Icon name="resume" />}
                   onClick={() => navigateTo(Page.ResumeBuilder)}
-                  className="bg-slate-900/40 border border-white/5"
+                  glowColor="purple"
                 />
                 <Card
                   title="AI Audit"
                   description="Analyze existing documents for deep neural feedback."
                   icon={<Icon name="analyzer" />}
                   onClick={() => navigateTo(Page.ResumeAnalyzer)}
-                  className="bg-indigo-600/90 text-white border-transparent"
+                  glowColor="green"
                 />
               </div>
             </motion.section>
@@ -305,14 +305,14 @@ const Home = ({ navigateTo, user, onEditResume, onDownloadResume }: { navigateTo
                                     className="p-3 bg-white/5 hover:bg-indigo-600 hover:text-white rounded-xl transition-all border border-white/5"
                                     title="Edit Module"
                                 >
-                                    <Icon name="roadmap" className="h-4 w-4" />
+                                    <Icon name="edit" className="h-4 w-4" />
                                 </button>
                                 <button 
                                     onClick={(e) => handleDeleteResume(res.id!, e)}
                                     className="p-3 bg-white/5 hover:bg-rose-600 hover:text-white rounded-xl transition-all border border-white/5"
                                     title="Delete Module"
                                 >
-                                    <Icon name="sun" className="h-4 w-4 rotate-45" />
+                                    <Icon name="trash" className="h-4 w-4" />
                                 </button>
                                 <button 
                                     onClick={() => onDownloadResume(res.id!)}
@@ -332,113 +332,96 @@ const Home = ({ navigateTo, user, onEditResume, onDownloadResume }: { navigateTo
   );
 };
 
+// Main App component that handles overall state and navigation
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
-  const [activeResumeId, setActiveResumeId] = useState<string | null>(null);
-  const [autoPrint, setAutoPrint] = useState(false);
   const [authView, setAuthView] = useState<AuthView>(AuthView.Login);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [initialized, setInitialized] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
+  const [editingResumeId, setEditingResumeId] = useState<string | undefined>(undefined);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    document.documentElement.classList.add('dark');
-    const initApp = async () => {
-      try {
-        supabase.auth.onAuthStateChange(async (_event, session) => {
-          if (session) {
-            try {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('full_name')
-                .eq('id', session.user.id)
-                .maybeSingle();
-                
-              setCurrentUser({
-                id: session.user.id,
-                email: session.user.email!,
-                fullName: profile?.full_name || session.user.email!.split('@')[0],
-              });
-              setAuthView(AuthView.App);
-            } catch (err) {
-              console.error("Profile fetch error:", err);
-            }
-          } else {
-            setCurrentUser(null);
-            setAuthView(AuthView.Login);
-          }
-        });
-      } catch (err) {
-        console.error("App initialization error:", err);
-      } finally {
-        setTimeout(() => setInitialized(true), 800);
-      }
-    };
-    initApp();
+    // Initial system load simulation
+    const timer = setTimeout(() => setIsReady(true), 1500);
+    return () => clearTimeout(timer);
   }, []);
 
-  const navigateTo = useCallback((page: Page) => {
-    setCurrentPage(page);
-    setActiveResumeId(null);
-    setAutoPrint(false);
+  const handleLogin = (u: User) => {
+    setUser(u);
     setAuthView(AuthView.App);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  const handleEditResume = (resumeId: string) => {
-    setActiveResumeId(resumeId);
-    setAutoPrint(false);
-    setCurrentPage(Page.ResumeBuilder);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDownloadResume = (resumeId: string) => {
-    setActiveResumeId(resumeId);
-    setAutoPrint(true);
-    setCurrentPage(Page.ResumeBuilder);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLogout = async () => {
     await databaseService.logout();
-    setCurrentUser(null);
+    setUser(null);
     setAuthView(AuthView.Login);
-    navigateTo(Page.Home);
+    setCurrentPage(Page.Home);
   };
 
-  if (!initialized) return <LoadingScreen />;
+  const navigateTo = (page: Page) => {
+    setEditingResumeId(undefined);
+    setCurrentPage(page);
+  };
 
-  if (!currentUser || authView === AuthView.Login) {
-    return (
-      <div className="dark min-h-screen bg-slate-950">
-        <LoginPage onLogin={(user) => { setCurrentUser(user); setAuthView(AuthView.App); setCurrentPage(Page.Home); }} />
-      </div>
-    );
+  const onEditResume = (id: string) => {
+    setEditingResumeId(id);
+    setCurrentPage(Page.ResumeBuilder);
+  };
+
+  const onDownloadResume = (id: string) => {
+    setEditingResumeId(id);
+    setCurrentPage(Page.ResumeBuilder);
+  };
+
+  if (!isReady) return <LoadingScreen />;
+
+  if (authView === AuthView.Login || !user) {
+    return <LoginPage onLogin={handleLogin} />;
   }
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case Page.Chat: return <ChatBot user={currentUser} />;
-      case Page.IndustryQA: return <IndustryQA />;
-      case Page.ResumeBuilder: return <ResumeBuilder user={currentUser} resumeId={activeResumeId || undefined} autoPrint={autoPrint} />;
-      case Page.ResumeAnalyzer: return <ResumeAnalyzer />;
-      case Page.Home:
-      default: return <Home navigateTo={navigateTo} user={currentUser} onEditResume={handleEditResume} onDownloadResume={handleDownloadResume} />;
-    }
-  };
-
   return (
-    <div className="dark min-h-screen bg-slate-950 transition-colors duration-300">
-      <div className="flex flex-col min-h-screen">
-        <Header currentPage={currentPage} navigateTo={navigateTo} user={currentUser} onLogout={handleLogout} onShowLogin={() => setAuthView(AuthView.Login)} />
-        <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-16 perspective-[2000px]">
+    <div className="min-h-screen bg-slate-950 text-white selection:bg-indigo-500/30 font-sans antialiased">
+      <Header 
+        currentPage={currentPage} 
+        navigateTo={navigateTo} 
+        user={user} 
+        onLogout={handleLogout}
+        onShowLogin={() => setAuthView(AuthView.Login)}
+      />
+      
+      <main className="pt-24 pb-12">
+        <div className="container mx-auto px-4 max-w-7xl">
           <AnimatePresence mode="wait">
-            <motion.div key={currentPage + (activeResumeId || '')} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.02 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="w-full h-full">
-              {renderPage()}
+            <motion.div
+              key={currentPage}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              {currentPage === Page.Home && (
+                <Home 
+                  navigateTo={navigateTo} 
+                  user={user} 
+                  onEditResume={onEditResume} 
+                  onDownloadResume={onDownloadResume} 
+                />
+              )}
+              {currentPage === Page.IndustryQA && <IndustryQA />}
+              {currentPage === Page.ResumeBuilder && (
+                <ResumeBuilder 
+                  user={user} 
+                  resumeId={editingResumeId} 
+                />
+              )}
+              {currentPage === Page.ResumeAnalyzer && <ResumeAnalyzer />}
+              {currentPage === Page.Chat && <ChatBot user={user} />}
             </motion.div>
           </AnimatePresence>
-        </main>
-        <Footer />
-      </div>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };

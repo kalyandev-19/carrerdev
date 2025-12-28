@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { GlowCard } from '../ui/spotlight-card.tsx';
 
 interface CardProps {
   title: string;
@@ -8,57 +9,45 @@ interface CardProps {
   icon: React.ReactNode;
   onClick: () => void;
   className?: string;
+  glowColor?: 'blue' | 'purple' | 'green' | 'red' | 'orange';
 }
 
-const Card: React.FC<CardProps> = ({ title, description, icon, onClick, className = '' }) => {
+const Card: React.FC<CardProps> = ({ title, description, icon, onClick, className = '', glowColor = 'blue' }) => {
   return (
     <motion.div
       onClick={onClick}
       whileHover={{ 
-        scale: 1.02, 
-        rotateY: 5, 
-        rotateX: -5,
-        translateZ: 20
+        scale: 1.02,
+        y: -5
       }}
       whileTap={{ scale: 0.98 }}
-      className={`relative group p-10 glass-panel rounded-[40px] cursor-pointer shadow-3d hover:shadow-3d-hover transition-all duration-500 perspective-[1000px] overflow-hidden ${className}`}
-      style={{ transformStyle: "preserve-3d" }}
+      className="h-full w-full"
     >
-      {/* Dynamic Glow Layer */}
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-      
-      {/* Icon with 3D Pop */}
-      <motion.div 
-        style={{ transformStyle: "preserve-3d", translateZ: "40px" }}
-        className="inline-flex bg-slate-900/80 p-5 rounded-2xl text-indigo-400 mb-8 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 shadow-inner-soft group-hover:shadow-indigo-500/20"
+      <GlowCard 
+        glowColor={glowColor}
+        customSize={true}
+        className={`w-full h-full min-h-[220px] ${className}`}
       >
-        {icon}
-      </motion.div>
-
-      {/* Text with Layered Depth */}
-      <div style={{ transformStyle: "preserve-3d" }}>
-        <motion.h3 
-          style={{ translateZ: "30px" }}
-          className="text-2xl font-black text-white mb-4 tracking-tighter uppercase"
-        >
-          {title}
-        </motion.h3>
-        <motion.p 
-          style={{ translateZ: "20px" }}
-          className="text-slate-400 text-sm leading-relaxed font-bold uppercase tracking-wider"
-        >
-          {description}
-        </motion.p>
-      </div>
-
-      {/* Technical Corner Accent */}
-      <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-30 transition-opacity">
-        <div className="w-4 h-4 border-t-2 border-r-2 border-indigo-400 rounded-tr-md" />
-      </div>
-      
-      <div className="absolute bottom-0 left-0 p-6 opacity-0 group-hover:opacity-30 transition-opacity">
-        <div className="w-4 h-4 border-b-2 border-l-2 border-indigo-400 rounded-bl-md" />
-      </div>
+        <div className="p-8 h-full flex flex-col justify-between">
+          <div className="flex flex-col gap-6">
+            <div className="inline-flex bg-slate-900/60 p-4 rounded-2xl text-indigo-400 self-start border border-white/5 shadow-inner-soft">
+              {icon}
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-white mb-2 tracking-tighter uppercase">
+                {title}
+              </h3>
+              <p className="text-slate-400 text-xs leading-relaxed font-bold uppercase tracking-wider">
+                {description}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex justify-end mt-4 opacity-30 group-hover:opacity-100 transition-opacity">
+            <div className="w-8 h-[2px] bg-indigo-500 rounded-full" />
+          </div>
+        </div>
+      </GlowCard>
     </motion.div>
   );
 };

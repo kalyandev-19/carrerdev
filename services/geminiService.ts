@@ -74,8 +74,9 @@ export const askIndustryExpertStream = async function* (field: string, question:
 export const generateResumeSectionStream = async function* (prompt: string) {
     try {
         const ai = getAI();
+        // Updated to recommended gemini-3-flash-preview model
         const responseStream = await ai.models.generateContentStream({
-            model: 'gemini-2.5-flash-lite-latest',
+            model: 'gemini-3-flash-preview',
             contents: [{
                 parts: [{ text: prompt }]
             }],

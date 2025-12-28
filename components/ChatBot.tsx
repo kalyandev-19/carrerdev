@@ -144,6 +144,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
             processor.onaudioprocess = (e) => {
               const data = e.inputBuffer.getChannelData(0);
               const pcm = encode(new Uint8Array(new Int16Array(data.map(v => v * 32767)).buffer));
+              // Ensure we send data only after the session resolves to prevent race conditions
               sessionPromise.then(s => {
                   activeSessionRef.current = s;
                   s.sendRealtimeInput({ media: { data: pcm, mimeType: 'audio/pcm;rate=16000' } });
@@ -216,8 +217,9 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
     setIsLoading(true);
     try {
       const ai = getAI();
+      // Updated to recommended gemini-3-flash-preview model
       const chat = ai.chats.create({ 
-          model: 'gemini-2.5-flash-lite-latest',
+          model: 'gemini-3-flash-preview',
           config: {
               systemInstruction: "You are a specialized career AI. Provide insightful, data-driven advice for students. Focus on speed and directness."
           }
@@ -263,7 +265,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
             <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Career Agent</h2>
             <div className="flex items-center gap-1.5 mt-1">
                <span className="h-1 w-1 rounded-full bg-indigo-400 animate-pulse" />
-               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none">Lite Core Active (Fast)</span>
+               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none">Neural Core Active</span>
             </div>
           </div>
         </div>

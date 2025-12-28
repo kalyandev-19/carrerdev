@@ -81,7 +81,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
     };
 
     const handleExport = async () => {
-        // Force a save to Supabase before printing to ensure the table is updated
+        // Force save to ensure record is in Supabase resumes table
         setIsSaving(true);
         setSaveStatus('saving');
         try {
@@ -97,12 +97,12 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         const fileName = `${resume.fullName.replace(/\s+/g, '_')}_Resume`;
         document.title = fileName;
         
-        // Wait for state to settle, then print
+        // Wait for page title to update, then trigger browser print
         setTimeout(() => {
             window.print();
             document.title = originalTitle;
             setIsSaving(false);
-        }, 300);
+        }, 500);
     };
 
     useEffect(() => {
@@ -127,7 +127,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         const handleResize = () => {
             if (previewContainerRef.current) {
                 const containerWidth = previewContainerRef.current.offsetWidth;
-                const a4Width = 794; // approx A4 width in px at 96dpi
+                const a4Width = 794;
                 const padding = 64;
                 const newScale = (containerWidth - padding) / a4Width;
                 setPreviewScale(Math.min(newScale, 1.0));
@@ -193,7 +193,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         } catch (error) { console.error(error); } finally { setLoadingSection(null); }
     }, [resume]);
 
-    // Core layout for the resume
     const ResumeContent = ({ printMode = false }: { printMode?: boolean }) => (
         <div 
             id={printMode ? "resume-export-area" : undefined}
@@ -204,7 +203,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                 scale: printMode ? undefined : previewScale,
                 transformOrigin: 'top center',
                 transform: printMode ? undefined : "translateZ(50px)",
-                // We let the CSS in index.html handle display and positioning during print
             }}
             className={`bg-white text-slate-900 ${printMode ? 'print-only' : 'shadow-2xl shadow-black/20'}`}
         >
@@ -281,10 +279,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
 
     return (
         <div className="py-8">
-            {/* 
-               IMPORTANT: This hidden container is what the browser actually "sees" when printing. 
-               The .print-only class in index.html ensures it is hidden on screen and visible in PDF.
-            */}
             <ResumeContent printMode={true} />
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 no-print">
@@ -297,19 +291,19 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                         <div className="flex items-center gap-2">
                             <div className={`h-2 w-2 rounded-full ${saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                {saveStatus === 'saved' ? 'Sync Verified' : saveStatus === 'saving' ? 'Syncing...' : 'Changes Pending'}
+                                {saveStatus === 'saved' ? 'Saved' : saveStatus === 'saving' ? 'Saving...' : 'Unsaved Changes'}
                             </span>
                         </div>
-                        {lastSaved && <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Last Sync: {lastSaved}</span>}
+                        {lastSaved && <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Last Saved: {lastSaved}</span>}
                     </div>
                     
                     <button 
                         onClick={handleManualSave}
                         disabled={isSaving}
-                        className="h-12 px-6 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center gap-3 text-indigo-500 font-black uppercase text-[10px] tracking-widest border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition-all disabled:opacity-50"
+                        className="h-12 px-8 btn-3d bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center gap-3 text-indigo-500 font-black uppercase text-[10px] tracking-widest border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition-all disabled:opacity-50"
                     >
-                        <Icon name="sun" className={`h-4 w-4 ${isSaving ? 'animate-spin' : ''}`} />
-                        Sync to Supabase
+                        <Icon name="save" className={`h-4 w-4 ${isSaving ? 'animate-spin' : ''}`} />
+                        Save Resume
                     </button>
 
                     <Button 
@@ -356,7 +350,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
                             <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Professional Bio</h3>
                             <button onClick={() => handleGenerateAI('summary')} disabled={loadingSection === 'summary'} className="h-8 px-4 text-[9px] font-black uppercase tracking-widest bg-indigo-600/10 text-indigo-400 rounded-lg hover:bg-indigo-600/20 transition-all flex items-center gap-2">
-                                {loadingSection === 'summary' ? <Icon name="sun" className="h-3 w-3 animate-spin" /> : <Icon name="logo" className="h-3 w-3" />}
+                                {loadingSection === 'summary' ? <Icon name="sun" className="h-3 w-3 animate-spin" /> : <Icon name="sparkles" className="h-3 w-3" />}
                                 AI Optimize
                             </button>
                         </div>
@@ -375,7 +369,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                             {resume.education.map((edu, idx) => (
                                 <div key={edu.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft group/entry">
                                     <button onClick={() => removeEntry('education', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 opacity-0 group-hover/entry:opacity-100 transition-all">
-                                        <Icon name="sun" className="h-4 w-4 rotate-45" />
+                                        <Icon name="trash" className="h-4 w-4" />
                                     </button>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                         <Input label="INSTITUTION" value={edu.school} onChange={e => handleNestedChange('education', idx, 'school', e.target.value)} />
@@ -403,7 +397,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                             {resume.experience.map((exp, idx) => (
                                 <div key={exp.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft group/entry">
                                     <button onClick={() => removeEntry('experience', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 opacity-0 group-hover/entry:opacity-100 transition-all">
-                                        <Icon name="sun" className="h-4 w-4 rotate-45" />
+                                        <Icon name="trash" className="h-4 w-4" />
                                     </button>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                         <Input label="COMPANY" value={exp.company} onChange={e => handleNestedChange('experience', idx, 'company', e.target.value)} />
@@ -417,6 +411,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                                         <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-2">RESPONSIBILITIES</label>
                                         <button onClick={() => handleGenerateAI('responsibilities', undefined, idx)} disabled={loadingSection === `responsibilities-${idx}`} className="text-[9px] font-black text-indigo-600 uppercase flex items-center gap-1">
                                             {loadingSection === `responsibilities-${idx}` && <Icon name="sun" className="h-2.5 w-2.5 animate-spin" />}
+                                            <Icon name="sparkles" className="h-3 w-3 mr-1" />
                                             AI Refresh
                                         </button>
                                     </div>
