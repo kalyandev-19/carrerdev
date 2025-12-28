@@ -37,7 +37,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout
   const initials = user.fullName ? user.fullName.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 px-4 py-4 pointer-events-none">
+    <header className="fixed top-0 left-0 right-0 z-50 px-4 py-4 pointer-events-none no-print">
       <nav className="container mx-auto max-w-7xl pointer-events-auto">
         <div className="glass-panel !bg-slate-950/70 backdrop-blur-xl border border-white/5 h-20 rounded-[30px] px-8 flex items-center justify-between shadow-3d">
           <div className="flex items-center cursor-pointer group shrink-0" onClick={() => navigateTo(Page.Home)}>

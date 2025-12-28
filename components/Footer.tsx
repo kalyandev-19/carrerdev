@@ -4,7 +4,7 @@ import Icon from './common/Icon.tsx';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="relative z-10 py-20 px-4">
+    <footer className="relative z-10 py-20 px-4 no-print">
       <div className="container mx-auto max-w-7xl">
         <div className="glass-panel p-12 md:p-16 rounded-[50px] shadow-3d border-t-2 border-l-2 border-white/5 relative overflow-hidden">
           {/* Spatial Decor */}
