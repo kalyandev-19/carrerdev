@@ -11,11 +11,13 @@ import Icon from './common/Icon.tsx';
 
 interface ResumeBuilderProps {
   user: User;
+  resumeId?: string;
 }
 
-const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
+const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
     const [resume, setResume] = useState<ResumeData>({
         userId: user.id,
+        title: 'New Resume Module',
         fullName: user.fullName,
         email: user.email,
         phone: '',
@@ -59,26 +61,22 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
     };
 
     const handleExport = () => {
-        // Change title temporarily so the PDF file has a professional name
         const originalTitle = document.title;
-        const fileName = `${resume.fullName.replace(/\s+/g, '_')}_Resume`;
+        const fileName = `${resume.title.replace(/\s+/g, '_')}_CareerDev`;
         document.title = fileName;
-        
         window.print();
-        
-        // Restore original title after print dialog closes
-        setTimeout(() => {
-            document.title = originalTitle;
-        }, 500);
+        setTimeout(() => { document.title = originalTitle; }, 500);
     };
 
     useEffect(() => {
         const loadResume = async () => {
-          const savedResume = await databaseService.getResume(user.id);
-          if (savedResume) setResume(savedResume);
+          if (resumeId) {
+            const savedResume = await databaseService.getResume(resumeId);
+            if (savedResume) setResume(savedResume);
+          }
         };
         loadResume();
-    }, [user.id]);
+    }, [resumeId, user.id]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -92,27 +90,26 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
         };
         window.addEventListener('resize', handleResize);
         const timer = setTimeout(handleResize, 100);
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            clearTimeout(timer);
-        };
+        return () => { window.removeEventListener('resize', handleResize); clearTimeout(timer); };
     }, [activeTab]);
 
     const handleChange = <T extends keyof ResumeData,>(field: T, value: ResumeData[T]) => {
-        setResume(prev => ({ ...prev, [field]: value }));
+        const updatedResume = { ...resume, [field]: value };
+        setResume(updatedResume);
         setSaveStatus('dirty');
         
         // Auto-save logic
         const timeoutId = setTimeout(async () => {
             try {
                 setSaveStatus('saving');
-                await databaseService.saveResume({ ...resume, [field]: value });
+                const saved = await databaseService.saveResume(updatedResume);
+                setResume(prev => ({ ...prev, id: saved.id, updatedAt: saved.updatedAt }));
                 setSaveStatus('saved');
             } catch (e) {
                 console.error("Auto-save failed", e);
                 setSaveStatus('dirty');
             }
-        }, 1000);
+        }, 1500);
         return () => clearTimeout(timeoutId);
     };
 
@@ -182,13 +179,18 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                     </div>
                     <Button onClick={handleExport} className="h-12 px-8 btn-3d bg-indigo-600 rounded-2xl flex items-center gap-3 active:scale-95">
                         <Icon name="resume" className="h-5 w-5" />
-                        Export PDF
+                        Download PDF
                     </Button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div className="space-y-8">
+                    {/* Module Title */}
+                    <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40">
+                         <Input label="DOCUMENT TITLE" value={resume.title} onChange={e => handleChange('title', e.target.value)} placeholder="E.G. SOFTWARE ENG INTERN" />
+                    </motion.section>
+
                     {/* Contact Info */}
                     <motion.section 
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
@@ -205,6 +207,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                             <Input label="EMAIL" value={resume.email} onChange={e => handleChange('email', e.target.value)} />
                             <Input label="PHONE" value={resume.phone} onChange={e => handleChange('phone', e.target.value)} />
                             <Input label="LINKEDIN" value={resume.linkedin} onChange={e => handleChange('linkedin', e.target.value)} />
+                            <Input label="GITHUB" value={resume.github || ''} onChange={e => handleChange('github', e.target.value)} />
                             <Input label="SKILLS" value={resume.skills} onChange={e => handleChange('skills', e.target.value)} placeholder="E.G. REACT, TYPESCRIPT" />
                         </div>
                     </motion.section>
@@ -273,7 +276,11 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                                             <Input label="END DATE" value={exp.endDate} onChange={e => handleNestedChange('experience', idx, 'endDate', e.target.value)} />
                                         </div>
                                     </div>
-                                    <Textarea rows={3} label="RESPONSIBILITIES" value={exp.responsibilities} onChange={e => handleNestedChange('experience', idx, 'responsibilities', e.target.value)} />
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-2">RESPONSIBILITIES</label>
+                                        <button onClick={() => handleGenerateAI('responsibilities', undefined, idx)} className="text-[9px] font-black text-indigo-600 uppercase">AI Refresh</button>
+                                    </div>
+                                    <Textarea rows={3} value={exp.responsibilities} onChange={e => handleNestedChange('experience', idx, 'responsibilities', e.target.value)} />
                                 </div>
                             ))}
                         </div>
@@ -307,6 +314,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                                         <span>{resume.email}</span>
                                         {resume.phone && <span>| {resume.phone}</span>}
                                         {resume.linkedin && <span className="text-indigo-600">{resume.linkedin}</span>}
+                                        {resume.github && <span className="text-slate-600">{resume.github}</span>}
                                     </div>
                                 </header>
                                 <div className="space-y-10">

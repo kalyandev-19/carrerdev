@@ -43,7 +43,9 @@ export interface Experience {
 }
 
 export interface ResumeData {
+  id?: string;
   userId: string;
+  title: string;
   fullName: string;
   email: string;
   phone: string;
@@ -53,6 +55,7 @@ export interface ResumeData {
   education: Education[];
   experience: Experience[];
   skills: string;
+  updatedAt?: string;
 }
 
 export interface IndustryResponse {

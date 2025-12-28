@@ -94,6 +94,7 @@ export const databaseService = {
   logout: async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('careerdev_guest_resume');
+    localStorage.removeItem('careerdev_guest_resumes_collection');
   },
 
   setSession: async (user: User | null) => {
@@ -118,27 +119,62 @@ export const databaseService = {
   },
 
   // --- Resume Methods ---
-  getResume: async (userId: string): Promise<ResumeData | null> => {
-    if (!isValidId(userId)) return null;
+  getResumes: async (userId: string): Promise<ResumeData[]> => {
+    if (!isValidId(userId)) return [];
 
     if (userId === 'guest-user') {
-      const localData = localStorage.getItem('careerdev_guest_resume');
-      return localData ? JSON.parse(localData) : null;
+      const localData = localStorage.getItem('careerdev_guest_resumes_collection');
+      return localData ? JSON.parse(localData) : [];
     }
 
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
       .eq('user_id', userId)
-      .maybeSingle();
+      .order('updated_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching resume:', error.message);
-      return null;
+      console.error('Error fetching resumes:', error.message);
+      return [];
     }
     
+    return (data || []).map(item => ({
+        id: item.id,
+        userId: item.user_id,
+        title: item.title || 'Untitled Resume',
+        fullName: item.full_name,
+        email: item.email,
+        phone: item.phone,
+        linkedin: item.linkedin,
+        github: item.github,
+        summary: item.summary,
+        education: item.education || [],
+        experience: item.experience || [],
+        skills: item.skills,
+        updatedAt: item.updated_at
+    }));
+  },
+
+  getResume: async (resumeId: string): Promise<ResumeData | null> => {
+    if (resumeId.startsWith('guest-')) {
+        const localData = localStorage.getItem('careerdev_guest_resumes_collection');
+        if (!localData) return null;
+        const collection: ResumeData[] = JSON.parse(localData);
+        return collection.find(r => r.id === resumeId) || null;
+    }
+
+    const { data, error } = await supabase
+      .from('resumes')
+      .select('*')
+      .eq('id', resumeId)
+      .maybeSingle();
+    
+    if (error) return null;
+    
     return data ? {
+        id: data.id,
         userId: data.user_id,
+        title: data.title || 'Untitled Resume',
         fullName: data.full_name,
         email: data.email,
         phone: data.phone,
@@ -147,21 +183,36 @@ export const databaseService = {
         summary: data.summary,
         education: data.education || [],
         experience: data.experience || [],
-        skills: data.skills
+        skills: data.skills,
+        updatedAt: data.updated_at
     } : null;
   },
 
-  saveResume: async (resume: ResumeData) => {
-    if (!isValidId(resume.userId)) return;
+  saveResume: async (resume: ResumeData): Promise<ResumeData> => {
+    const isGuest = resume.userId === 'guest-user';
+    const now = new Date().toISOString();
 
-    if (resume.userId === 'guest-user') {
-      localStorage.setItem('careerdev_guest_resume', JSON.stringify(resume));
-      return;
+    if (isGuest) {
+      const localData = localStorage.getItem('careerdev_guest_resumes_collection');
+      let collection: ResumeData[] = localData ? JSON.parse(localData) : [];
+      
+      const toSave = { ...resume, id: resume.id || `guest-${Date.now()}`, updatedAt: now };
+      
+      const existingIdx = collection.findIndex(r => r.id === toSave.id);
+      if (existingIdx >= 0) {
+        collection[existingIdx] = toSave;
+      } else {
+        collection.unshift(toSave);
+      }
+      
+      localStorage.setItem('careerdev_guest_resumes_collection', JSON.stringify(collection));
+      return toSave;
     }
 
-    // Ensure education and experience are correctly serialized for JSONB
     const payload = {
+      id: resume.id, // Supabase will generate if undefined
       user_id: resume.userId,
+      title: resume.title,
       full_name: resume.fullName,
       email: resume.email,
       phone: resume.phone,
@@ -170,13 +221,50 @@ export const databaseService = {
       summary: resume.summary,
       education: JSON.parse(JSON.stringify(resume.education)),
       experience: JSON.parse(JSON.stringify(resume.experience)),
-      skills: resume.skills
+      skills: resume.skills,
+      updated_at: now
     };
+
+    const { data, error } = await supabase
+      .from('resumes')
+      .upsert(payload, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    
+    return {
+        id: data.id,
+        userId: data.user_id,
+        title: data.title,
+        fullName: data.full_name,
+        email: data.email,
+        phone: data.phone,
+        linkedin: data.linkedin,
+        github: data.github,
+        summary: data.summary,
+        education: data.education,
+        experience: data.experience,
+        skills: data.skills,
+        updatedAt: data.updated_at
+    };
+  },
+
+  deleteResume: async (resumeId: string): Promise<void> => {
+    if (resumeId.startsWith('guest-')) {
+        const localData = localStorage.getItem('careerdev_guest_resumes_collection');
+        if (!localData) return;
+        const collection: ResumeData[] = JSON.parse(localData);
+        const filtered = collection.filter(r => r.id !== resumeId);
+        localStorage.setItem('careerdev_guest_resumes_collection', JSON.stringify(filtered));
+        return;
+    }
 
     const { error } = await supabase
       .from('resumes')
-      .upsert(payload, { onConflict: 'user_id' });
-
-    if (error) throw new Error(error.message);
-  },
+      .delete()
+      .eq('id', resumeId);
+    
+    if (error) throw error;
+  }
 };

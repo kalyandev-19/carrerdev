@@ -1,10 +1,11 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleGenAI, LiveServerMessage, Modality } from "@google/genai";
+import { LiveServerMessage, Modality } from "@google/genai";
 import Button from './common/Button.tsx';
 import Icon from './common/Icon.tsx';
 import { User } from '../types.ts';
+import { getAI } from '../services/geminiService.ts';
 
 interface Message {
   role: 'user' | 'model';
@@ -111,14 +112,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
 
   const startVoiceMode = async () => {
     try {
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) {
-        await handleKeyError();
-        return;
-      }
-
+      const ai = getAI();
       setIsVoiceMode(true);
-      const ai = new GoogleGenAI({ apiKey });
       
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
@@ -172,7 +167,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
           },
           onerror: (err: any) => {
             console.error("Live AI Error:", err);
-            if (err?.message?.includes("API key")) handleKeyError();
+            const msg = err?.message || "";
+            if (msg.includes("API key") || msg.includes("entity was not found")) {
+              handleKeyError();
+            }
           },
           onclose: stopVoiceMode,
         },
@@ -199,9 +197,12 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
         visualizerRequestRef.current = requestAnimationFrame(update);
       };
       update();
-    } catch (e) { 
+    } catch (e: any) { 
       console.error(e);
       setIsVoiceMode(false); 
+      if (e.message.includes("API Key")) {
+        setMessages(prev => [...prev, { role: 'model', text: e.message, isError: true }]);
+      }
     }
   };
 
@@ -209,23 +210,12 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading) return;
     
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-      setMessages(prev => [...prev, { 
-        role: 'model', 
-        text: "Error: API Authentication is missing. Please initialize the environment by selecting an API key.", 
-        isError: true 
-      }]);
-      await handleKeyError();
-      return;
-    }
-
     const txt = input;
     setMessages(prev => [...prev, { role: 'user', text: txt }]);
     setInput('');
     setIsLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = getAI();
       const chat = ai.chats.create({ 
           model: 'gemini-3-pro-preview',
           config: {
@@ -254,7 +244,9 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
         console.error(error);
         const errorMsg = error?.message || "Communication link failure.";
         setMessages(prev => [...prev, { role: 'model', text: errorMsg, isError: true }]);
-        if (errorMsg.includes("API Key") || errorMsg.includes("entity was not found")) handleKeyError();
+        if (errorMsg.includes("API Key") || errorMsg.includes("entity was not found")) {
+          handleKeyError();
+        }
     } finally { 
         setIsLoading(false); 
     }

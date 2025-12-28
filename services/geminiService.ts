@@ -2,16 +2,20 @@
 import { GoogleGenAI } from "@google/genai";
 import { GroundingSource } from "../types.ts";
 
+/**
+ * Custom error handler for Gemini API calls.
+ * Triggers the key selection dialog if an authentication error occurs.
+ */
 const handleAIError = (error: any) => {
   console.error("Gemini API Error:", error);
   const message = error?.message || "";
   
-  // Specific check for missing key in browser or invalid key errors
   const isAuthError = 
     message.includes("An API Key must be set") || 
     message.includes("Requested entity was not found") || 
     message.includes("API key not valid") ||
-    message.includes("API_KEY_INVALID");
+    message.includes("API_KEY_INVALID") ||
+    message.includes("invalid character");
 
   if (isAuthError) {
     // @ts-ignore
@@ -19,19 +23,19 @@ const handleAIError = (error: any) => {
       // @ts-ignore
       window.aistudio.openSelectKey();
     }
-    throw new Error("API Authentication failed. Please select a valid API key from a paid Google Cloud project to continue.");
+    throw new Error("Authentication failure. Please select a valid paid API key via the authorization dialog.");
   }
 
   throw error;
 };
 
 /**
- * Helper to ensure we always have a fresh instance with the latest injected API key
+ * Helper to ensure we always have a fresh instance with the latest injected API key.
+ * Triggers the key selection dialog if no key is found.
  */
-const getAI = () => {
+export const getAI = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
-    // Force open the key selector if we reach this state without a key
     // @ts-ignore
     if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
       // @ts-ignore
