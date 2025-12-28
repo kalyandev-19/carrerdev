@@ -30,8 +30,9 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         skills: ''
     });
     const [loadingSection, setLoadingSection] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'dirty'>('saved');
-    const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+    const [lastSaved, setLastSaved] = useState<string | null>(null);
     const previewContainerRef = useRef<HTMLDivElement>(null);
     const [previewScale, setPreviewScale] = useState(1);
 
@@ -61,11 +62,42 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         y.set(0);
     };
 
-    const handleExport = () => {
+    const handleManualSave = async () => {
+        setIsSaving(true);
+        setSaveStatus('saving');
+        try {
+            const saved = await databaseService.saveResume(resume);
+            setResume(prev => ({ ...prev, id: saved.id, updatedAt: saved.updatedAt }));
+            setSaveStatus('saved');
+            setLastSaved(new Date().toLocaleTimeString());
+            return saved;
+        } catch (e) {
+            console.error("Save failed", e);
+            setSaveStatus('dirty');
+            throw e;
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleExport = async () => {
+        // Always sync before downloading to ensure PDF content is current
+        if (saveStatus !== 'saved') {
+            try {
+                await handleManualSave();
+            } catch (e) {
+                if (!confirm("Could not sync with cloud. Download local version anyway?")) return;
+            }
+        }
+        
         const originalTitle = document.title;
-        const fileName = `${resume.title.replace(/\s+/g, '_')}_CareerDev`;
+        const fileName = `${resume.fullName.replace(/\s+/g, '_')}_Resume`;
         document.title = fileName;
+        
+        // Trigger browser print dialog
         window.print();
+        
+        // Reset title after print dialog closes
         setTimeout(() => { document.title = originalTitle; }, 500);
     };
 
@@ -75,9 +107,12 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
             const savedResume = await databaseService.getResume(resumeId);
             if (savedResume) {
                 setResume(savedResume);
+                if (savedResume.updatedAt) {
+                    setLastSaved(new Date(savedResume.updatedAt).toLocaleTimeString());
+                }
                 if (autoPrint) {
-                    // Small delay to ensure content renders before print dialog
-                    setTimeout(handleExport, 1000);
+                    // Small delay to ensure rendering completes
+                    setTimeout(handleExport, 800);
                 }
             }
           }
@@ -98,26 +133,11 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         window.addEventListener('resize', handleResize);
         const timer = setTimeout(handleResize, 100);
         return () => { window.removeEventListener('resize', handleResize); clearTimeout(timer); };
-    }, [activeTab]);
+    }, []);
 
     const handleChange = <T extends keyof ResumeData,>(field: T, value: ResumeData[T]) => {
-        const updatedResume = { ...resume, [field]: value };
-        setResume(updatedResume);
+        setResume(prev => ({ ...prev, [field]: value }));
         setSaveStatus('dirty');
-        
-        // Auto-save logic
-        const timeoutId = setTimeout(async () => {
-            try {
-                setSaveStatus('saving');
-                const saved = await databaseService.saveResume(updatedResume);
-                setResume(prev => ({ ...prev, id: saved.id, updatedAt: saved.updatedAt }));
-                setSaveStatus('saved');
-            } catch (e) {
-                console.error("Auto-save failed", e);
-                setSaveStatus('dirty');
-            }
-        }, 1500);
-        return () => clearTimeout(timeoutId);
     };
 
     const handleNestedChange = <T extends 'education' | 'experience',>(section: T, index: number, field: string, value: string) => {
@@ -170,21 +190,128 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
         } catch (error) { console.error(error); } finally { setLoadingSection(null); }
     }, [resume]);
 
+    // This component renders the actual resume content used for both Preview and Print
+    const ResumeContent = ({ printMode = false }: { printMode?: boolean }) => (
+        <div 
+            id={printMode ? "resume-export-area" : undefined}
+            style={{ 
+                width: '794px', 
+                minHeight: '1123px', 
+                padding: '64px', 
+                scale: printMode ? undefined : previewScale,
+                transformOrigin: 'top center',
+                // FIX: 'translateZ' is not a valid CSS property name in standard React.CSSProperties. 
+                // Using 'transform' shorthand with 'translateZ' to fix the TypeScript error while maintaining the 3D effect.
+                transform: printMode ? undefined : "translateZ(50px)",
+                position: printMode ? 'absolute' : 'relative',
+                left: printMode ? '-9999px' : undefined,
+                top: printMode ? '-9999px' : undefined,
+                zIndex: printMode ? -100 : undefined
+            }}
+            className={`bg-white text-slate-900 ${printMode ? 'print-only' : 'shadow-2xl shadow-black/20'}`}
+        >
+            <header className="text-center mb-12">
+                <h1 className="text-5xl font-black text-slate-950 tracking-tighter uppercase mb-4">{resume.fullName || 'YOUR NAME'}</h1>
+                <div className="flex flex-wrap justify-center gap-4 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+                    <span>{resume.email}</span>
+                    {resume.phone && <span>| {resume.phone}</span>}
+                    {resume.linkedin && <span className="text-indigo-600">{resume.linkedin}</span>}
+                    {resume.github && <span className="text-slate-600">{resume.github}</span>}
+                </div>
+            </header>
+            <div className="space-y-12">
+                {resume.summary && (
+                    <section>
+                        <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Professional Summary</h2>
+                        <p className="text-sm font-medium text-slate-700 leading-relaxed whitespace-pre-wrap">{resume.summary}</p>
+                    </section>
+                )}
+
+                {resume.education.length > 0 && (
+                    <section>
+                        <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Education</h2>
+                        <div className="space-y-6">
+                            {resume.education.map(edu => (
+                                <div key={edu.id}>
+                                    <div className="flex justify-between items-baseline mb-1">
+                                        <h4 className="font-black text-slate-950 text-base">{edu.school}</h4>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{edu.startDate} - {edu.endDate || 'Present'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-baseline">
+                                        <p className="text-sm font-bold text-indigo-600 uppercase tracking-tight">{edu.degree}</p>
+                                        {edu.gpa && <span className="text-xs font-bold text-slate-500 italic">GPA: {edu.gpa}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {resume.experience.length > 0 && (
+                    <section>
+                        <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Experience</h2>
+                        <div className="space-y-10">
+                            {resume.experience.map(exp => (
+                                <div key={exp.id}>
+                                    <div className="flex justify-between items-baseline mb-1">
+                                        <h4 className="font-black text-slate-950 text-base">{exp.role}</h4>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{exp.startDate} - {exp.endDate || 'Present'}</span>
+                                    </div>
+                                    <p className="text-xs font-black text-indigo-600 uppercase tracking-tighter mb-4">{exp.company}</p>
+                                    <p className="text-[13px] text-slate-600 whitespace-pre-wrap leading-relaxed border-l-2 border-slate-100 pl-6">{exp.responsibilities}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {resume.skills && (
+                    <section>
+                        <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Technical Proficiencies</h2>
+                        <div className="flex flex-wrap gap-2">
+                            {resume.skills.split(',').map((skill, i) => (
+                                <span key={i} className="text-[10px] font-black uppercase tracking-widest bg-slate-50 text-slate-700 px-4 py-1.5 rounded-md border border-slate-100">
+                                    {skill.trim()}
+                                </span>
+                            ))}
+                        </div>
+                    </section>
+                )}
+            </div>
+        </div>
+    );
+
     return (
         <div className="py-8">
+            {/* Secret Print Area - Always rendered so window.print() can find it */}
+            <ResumeContent printMode={true} />
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                     <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Resume Studio</h2>
                     <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">3D Precision Workspace</p>
                 </motion.div>
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            {saveStatus === 'saved' ? 'Sync Verified' : saveStatus === 'saving' ? 'Syncing...' : 'Changes Pending'}
-                        </span>
+                <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-col items-end mr-2">
+                        <div className="flex items-center gap-2">
+                            <div className={`h-2 w-2 rounded-full ${saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                {saveStatus === 'saved' ? 'Sync Verified' : saveStatus === 'saving' ? 'Syncing...' : 'Changes Pending'}
+                            </span>
+                        </div>
+                        {lastSaved && <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Last Sync: {lastSaved}</span>}
                     </div>
-                    <Button onClick={handleExport} className="h-12 px-8 btn-3d bg-indigo-600 rounded-2xl flex items-center gap-3 active:scale-95">
+                    
+                    <button 
+                        onClick={handleManualSave}
+                        disabled={isSaving}
+                        className="h-12 px-6 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center gap-3 text-indigo-500 font-black uppercase text-[10px] tracking-widest border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition-all disabled:opacity-50"
+                    >
+                        <Icon name="sun" className={`h-4 w-4 ${isSaving ? 'animate-spin' : ''}`} />
+                        Sync to Cloud
+                    </button>
+
+                    <Button onClick={handleExport} className="h-12 px-8 btn-3d bg-indigo-600 rounded-2xl flex items-center gap-3 active:scale-95 shadow-indigo-500/20">
                         <Icon name="resume" className="h-5 w-5" />
                         Download PDF
                     </Button>
@@ -198,7 +325,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                          <Input label="DOCUMENT TITLE" value={resume.title} onChange={e => handleChange('title', e.target.value)} placeholder="E.G. SOFTWARE ENG INTERN" />
                     </motion.section>
 
-                    {/* Contact Info */}
+                    {/* Identity Profile */}
                     <motion.section 
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                         className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-6"
@@ -219,14 +346,17 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                         </div>
                     </motion.section>
 
-                    {/* Summary */}
+                    {/* Bio */}
                     <motion.section 
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                         className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4"
                     >
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
                             <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Professional Bio</h3>
-                            <Button onClick={() => handleGenerateAI('summary')} isLoading={loadingSection === 'summary'} className="h-8 px-4 text-[9px] bg-slate-100 dark:bg-slate-700 !text-indigo-600">AI Optimize</Button>
+                            <button onClick={() => handleGenerateAI('summary')} disabled={loadingSection === 'summary'} className="h-8 px-4 text-[9px] font-black uppercase tracking-widest bg-indigo-600/10 text-indigo-400 rounded-lg hover:bg-indigo-600/20 transition-all flex items-center gap-2">
+                                {loadingSection === 'summary' ? <Icon name="sun" className="h-3 w-3 animate-spin" /> : <Icon name="logo" className="h-3 w-3" />}
+                                AI Optimize
+                            </button>
                         </div>
                         <Textarea rows={4} value={resume.summary} onChange={e => handleChange('summary', e.target.value)} />
                     </motion.section>
@@ -285,7 +415,10 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                                     </div>
                                     <div className="flex items-center justify-between mb-2">
                                         <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 ml-2">RESPONSIBILITIES</label>
-                                        <button onClick={() => handleGenerateAI('responsibilities', undefined, idx)} className="text-[9px] font-black text-indigo-600 uppercase">AI Refresh</button>
+                                        <button onClick={() => handleGenerateAI('responsibilities', undefined, idx)} disabled={loadingSection === `responsibilities-${idx}`} className="text-[9px] font-black text-indigo-600 uppercase flex items-center gap-1">
+                                            {loadingSection === `responsibilities-${idx}` && <Icon name="sun" className="h-2.5 w-2.5 animate-spin" />}
+                                            AI Refresh
+                                        </button>
                                     </div>
                                     <Textarea rows={3} value={exp.responsibilities} onChange={e => handleNestedChange('experience', idx, 'responsibilities', e.target.value)} />
                                 </div>
@@ -303,87 +436,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint
                         className="glass-panel p-8 rounded-[50px] shadow-3d border-t-2 border-l-2 border-white/40 overflow-hidden flex flex-col items-center cursor-default h-[calc(100vh-14rem)]"
                     >
                         <div className="w-full overflow-y-auto custom-scrollbar flex justify-center py-8">
-                            <motion.div 
-                                id="resume-export-area"
-                                style={{ 
-                                    width: '794px', 
-                                    minHeight: '1123px', 
-                                    padding: '64px', 
-                                    scale: previewScale,
-                                    transformOrigin: 'top center',
-                                    translateZ: "50px"
-                                }}
-                                className="bg-white text-slate-900 shadow-2xl shadow-black/20"
-                            >
-                                <header className="text-center mb-10">
-                                    <h1 className="text-5xl font-black text-slate-950 tracking-tighter uppercase mb-4">{resume.fullName || 'YOUR IDENTITY'}</h1>
-                                    <div className="flex flex-wrap justify-center gap-4 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-                                        <span>{resume.email}</span>
-                                        {resume.phone && <span>| {resume.phone}</span>}
-                                        {resume.linkedin && <span className="text-indigo-600">{resume.linkedin}</span>}
-                                        {resume.github && <span className="text-slate-600">{resume.github}</span>}
-                                    </div>
-                                </header>
-                                <div className="space-y-10">
-                                    {resume.summary && (
-                                        <section>
-                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Summary</h2>
-                                            <p className="text-sm font-medium text-slate-700 leading-relaxed whitespace-pre-wrap">{resume.summary}</p>
-                                        </section>
-                                    )}
-
-                                    {resume.education.length > 0 && (
-                                        <section>
-                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Education</h2>
-                                            <div className="space-y-6">
-                                                {resume.education.map(edu => (
-                                                    <div key={edu.id}>
-                                                        <div className="flex justify-between items-baseline mb-1">
-                                                            <h4 className="font-black text-slate-950 text-base">{edu.school}</h4>
-                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{edu.startDate} - {edu.endDate || 'Present'}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-baseline">
-                                                            <p className="text-sm font-bold text-indigo-600 uppercase tracking-tight">{edu.degree}</p>
-                                                            {edu.gpa && <span className="text-xs font-bold text-slate-500 italic">GPA: {edu.gpa}</span>}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-
-                                    {resume.experience.length > 0 && (
-                                        <section>
-                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Experience</h2>
-                                            <div className="space-y-8">
-                                                {resume.experience.map(exp => (
-                                                    <div key={exp.id}>
-                                                        <div className="flex justify-between items-baseline mb-1">
-                                                            <h4 className="font-black text-slate-950 text-base">{exp.role}</h4>
-                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{exp.startDate} - {exp.endDate || 'Present'}</span>
-                                                        </div>
-                                                        <p className="text-xs font-black text-indigo-600 uppercase tracking-tighter mb-3">{exp.company}</p>
-                                                        <p className="text-[13px] text-slate-600 whitespace-pre-wrap leading-relaxed border-l-2 border-slate-50 pl-4">{exp.responsibilities}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-
-                                    {resume.skills && (
-                                        <section>
-                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Technical Stack</h2>
-                                            <div className="flex flex-wrap gap-2">
-                                                {resume.skills.split(',').map((skill, i) => (
-                                                    <span key={i} className="text-[11px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 px-3 py-1 rounded-md border border-slate-100">
-                                                        {skill.trim()}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-                                </div>
-                            </motion.div>
+                            <ResumeContent printMode={false} />
                         </div>
                     </motion.div>
                 </div>

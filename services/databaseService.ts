@@ -2,13 +2,39 @@
 import { createClient } from '@supabase/supabase-js';
 import { User, ResumeData } from '../types';
 
+/**
+ * SQL SCHEMA FOR SUPABASE SETUP
+ * ----------------------------
+ * Run this in your Supabase SQL Editor:
+ * 
+ * CREATE TABLE IF NOT EXISTS public.resumes (
+ *     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+ *     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+ *     title TEXT NOT NULL DEFAULT 'Untitled Resume',
+ *     full_name TEXT NOT NULL,
+ *     email TEXT,
+ *     phone TEXT,
+ *     linkedin TEXT,
+ *     github TEXT,
+ *     summary TEXT,
+ *     skills TEXT,
+ *     education JSONB DEFAULT '[]'::jsonb,
+ *     experience JSONB DEFAULT '[]'::jsonb,
+ *     created_at TIMESTAMPTZ DEFAULT now(),
+ *     updated_at TIMESTAMPTZ DEFAULT now()
+ * );
+ * 
+ * ALTER TABLE public.resumes ENABLE ROW LEVEL SECURITY;
+ * CREATE POLICY "Users can manage their own resumes" ON public.resumes 
+ * FOR ALL USING (auth.uid() = user_id);
+ */
+
 const SUPABASE_URL = 'https://beerzpfihrilduvhkqdo.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlZXJ6cGZpaHJpbGR1dmhrcWRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NDYwMTcsImV4cCI6MjA4MjQyMjAxN30.V7QxMmYesJJZdwjIKcZL5LEGtKib6yCVMy9ngj5q97o';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Helper to check if a string is a valid UUID or our guest identifier
-const isValidId = (id: string) => id === 'guest-user' || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 
 export const databaseService = {
   // --- User & Auth Methods ---
@@ -16,49 +42,14 @@ export const databaseService = {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          full_name: fullName,
-        }
-      }
+      options: { data: { full_name: fullName } }
     });
 
     if (authError) throw authError;
     if (!authData.user) throw new Error('User creation failed');
 
-    // Pre-create profile (will be linked once verified)
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      id: authData.user.id,
-      email: email,
-      full_name: fullName,
-    });
-
-    if (profileError) console.error('Profile creation error:', profileError.message);
-
+    // Profile is created via SQL trigger on auth.users insert in a standard setup
     return { userId: authData.user.id };
-  },
-
-  verifyOtp: async (email: string, token: string): Promise<User> => {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'signup'
-    });
-
-    if (error) throw error;
-    if (!data.user) throw new Error('Verification failed');
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', data.user.id)
-      .maybeSingle();
-
-    return {
-      id: data.user.id,
-      email: data.user.email || 'no-email',
-      fullName: profile?.full_name || data.user.email?.split('@')[0] || 'User',
-    };
   },
 
   login: async (email: string, password: string): Promise<User> => {
@@ -70,6 +61,7 @@ export const databaseService = {
     if (authError) throw authError;
     if (!authData.user) throw new Error('Login failed');
 
+    // Get profile info
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name')
@@ -79,7 +71,32 @@ export const databaseService = {
     return {
       id: authData.user.id,
       email: authData.user.email || 'no-email',
-      fullName: profile?.full_name || authData.user.email?.split('@')[0] || 'User',
+      fullName: profile?.full_name || authData.user.user_metadata?.full_name || authData.user.email?.split('@')[0] || 'User',
+    };
+  },
+
+  // Fix: Added missing verifyOtp method to handle user verification after signup
+  verifyOtp: async (email: string, token: string): Promise<User> => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup',
+    });
+
+    if (error) throw error;
+    if (!data.user) throw new Error('Verification failed');
+
+    // Get profile info
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    return {
+      id: data.user.id,
+      email: data.user.email || 'no-email',
+      fullName: profile?.full_name || data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
     };
   },
 
@@ -87,45 +104,23 @@ export const databaseService = {
     return {
       id: 'guest-user',
       email: 'guest@careerdev.ai',
-      fullName: 'Guest explorer'
+      fullName: 'Guest Explorer'
     };
   },
 
   logout: async () => {
     await supabase.auth.signOut();
-    localStorage.removeItem('careerdev_guest_resume');
     localStorage.removeItem('careerdev_guest_resumes_collection');
-  },
-
-  setSession: async (user: User | null) => {
-    if (!user) await supabase.auth.signOut();
-  },
-
-  getSession: async (): Promise<User | null> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return null;
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    return {
-      id: session.user.id,
-      email: session.user.email || 'no-email',
-      fullName: profile?.full_name || session.user.email?.split('@')[0] || 'User',
-    };
   },
 
   // --- Resume Methods ---
   getResumes: async (userId: string): Promise<ResumeData[]> => {
-    if (!isValidId(userId)) return [];
-
     if (userId === 'guest-user') {
       const localData = localStorage.getItem('careerdev_guest_resumes_collection');
       return localData ? JSON.parse(localData) : [];
     }
+
+    if (!isValidUUID(userId)) return [];
 
     const { data, error } = await supabase
       .from('resumes')
@@ -134,14 +129,14 @@ export const databaseService = {
       .order('updated_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching resumes:', error.message);
+      console.error("Error fetching resumes:", error);
       return [];
     }
     
     return (data || []).map(item => ({
         id: item.id,
         userId: item.user_id,
-        title: item.title || 'Untitled Resume',
+        title: item.title,
         fullName: item.full_name,
         email: item.email,
         phone: item.phone,
@@ -163,18 +158,20 @@ export const databaseService = {
         return collection.find(r => r.id === resumeId) || null;
     }
 
+    if (!isValidUUID(resumeId)) return null;
+
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
       .eq('id', resumeId)
       .maybeSingle();
     
-    if (error) return null;
+    if (error || !data) return null;
     
-    return data ? {
+    return {
         id: data.id,
         userId: data.user_id,
-        title: data.title || 'Untitled Resume',
+        title: data.title,
         fullName: data.full_name,
         email: data.email,
         phone: data.phone,
@@ -185,7 +182,7 @@ export const databaseService = {
         experience: data.experience || [],
         skills: data.skills,
         updatedAt: data.updated_at
-    } : null;
+    };
   },
 
   saveResume: async (resume: ResumeData): Promise<ResumeData> => {
@@ -195,22 +192,16 @@ export const databaseService = {
     if (isGuest) {
       const localData = localStorage.getItem('careerdev_guest_resumes_collection');
       let collection: ResumeData[] = localData ? JSON.parse(localData) : [];
-      
       const toSave = { ...resume, id: resume.id || `guest-${Date.now()}`, updatedAt: now };
-      
       const existingIdx = collection.findIndex(r => r.id === toSave.id);
-      if (existingIdx >= 0) {
-        collection[existingIdx] = toSave;
-      } else {
-        collection.unshift(toSave);
-      }
-      
+      if (existingIdx >= 0) collection[existingIdx] = toSave;
+      else collection.unshift(toSave);
       localStorage.setItem('careerdev_guest_resumes_collection', JSON.stringify(collection));
       return toSave;
     }
 
-    const payload = {
-      id: resume.id, // Supabase will generate if undefined
+    // Mapping frontend (camelCase) to backend (snake_case)
+    const payload: any = {
       user_id: resume.userId,
       title: resume.title,
       full_name: resume.fullName,
@@ -219,11 +210,15 @@ export const databaseService = {
       linkedin: resume.linkedin,
       github: resume.github,
       summary: resume.summary,
-      education: JSON.parse(JSON.stringify(resume.education)),
-      experience: JSON.parse(JSON.stringify(resume.experience)),
+      education: resume.education,
+      experience: resume.experience,
       skills: resume.skills,
-      updated_at: now
     };
+
+    // If ID exists and is a valid UUID, include it for upsert
+    if (resume.id && isValidUUID(resume.id)) {
+      payload.id = resume.id;
+    }
 
     const { data, error } = await supabase
       .from('resumes')
@@ -231,7 +226,10 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("Supabase Save Error:", error);
+      throw new Error(error.message);
+    }
     
     return {
         id: data.id,
@@ -255,16 +253,13 @@ export const databaseService = {
         const localData = localStorage.getItem('careerdev_guest_resumes_collection');
         if (!localData) return;
         const collection: ResumeData[] = JSON.parse(localData);
-        const filtered = collection.filter(r => r.id !== resumeId);
-        localStorage.setItem('careerdev_guest_resumes_collection', JSON.stringify(filtered));
+        localStorage.setItem('careerdev_guest_resumes_collection', JSON.stringify(collection.filter(r => r.id !== resumeId)));
         return;
     }
 
-    const { error } = await supabase
-      .from('resumes')
-      .delete()
-      .eq('id', resumeId);
-    
+    if (!isValidUUID(resumeId)) return;
+
+    const { error } = await supabase.from('resumes').delete().eq('id', resumeId);
     if (error) throw error;
   }
 };
