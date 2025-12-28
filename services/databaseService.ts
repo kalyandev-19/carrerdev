@@ -12,16 +12,22 @@ const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab
 
 export const databaseService = {
   // --- User & Auth Methods ---
-  createUser: async (email: string, password: string, fullName: string): Promise<User> => {
+  createUser: async (email: string, password: string, fullName: string): Promise<{ userId: string }> => {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          full_name: fullName,
+        }
+      }
     });
 
     if (authError) throw authError;
     if (!authData.user) throw new Error('User creation failed');
 
-    const { error: profileError } = await supabase.from('profiles').insert({
+    // Pre-create profile (will be linked once verified)
+    const { error: profileError } = await supabase.from('profiles').upsert({
       id: authData.user.id,
       email: email,
       full_name: fullName,
@@ -29,10 +35,29 @@ export const databaseService = {
 
     if (profileError) console.error('Profile creation error:', profileError.message);
 
+    return { userId: authData.user.id };
+  },
+
+  verifyEmailOtp: async (email: string, token: string): Promise<User> => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup'
+    });
+
+    if (error) throw error;
+    if (!data.user) throw new Error('Verification failed');
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
     return {
-      id: authData.user.id,
-      email: authData.user.email!,
-      fullName: fullName,
+      id: data.user.id,
+      email: data.user.email!,
+      fullName: profile?.full_name || data.user.email!.split('@')[0],
     };
   },
 

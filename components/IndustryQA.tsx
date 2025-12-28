@@ -11,6 +11,7 @@ interface Message {
     text: string;
     sources?: GroundingSource[];
     isStreaming?: boolean;
+    isError?: boolean;
 }
 
 const IndustryQA: React.FC = () => {
@@ -20,7 +21,15 @@ const IndustryQA: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const conversationEndRef = useRef<HTMLDivElement | null>(null);
 
-    const industryFields = ['Software Engineering', 'Data Science', 'Product Management', 'UX/UI Design', 'Marketing', 'Finance'];
+    const industryFields = [
+        'Internships & Jobs', 
+        'Software Engineering', 
+        'Data Science', 
+        'Product Management', 
+        'UX/UI Design', 
+        'Marketing', 
+        'Finance'
+    ];
 
     const scrollToBottom = () => {
         conversationEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -56,7 +65,7 @@ const IndustryQA: React.FC = () => {
                 const metadata = chunk.candidates?.[0]?.groundingMetadata;
                 if (metadata?.groundingChunks) {
                     finalSources = metadata.groundingChunks
-                        .map((c: any) => ({ title: c.web?.title || 'Source', uri: c.web?.uri || '' }))
+                        .map((c: any) => ({ title: c.web?.title || 'External Intel', uri: c.web?.uri || '' }))
                         .filter((s: any) => s.uri);
                 }
 
@@ -74,75 +83,90 @@ const IndustryQA: React.FC = () => {
                 next[lastIdx] = { ...next[lastIdx], isStreaming: false };
                 return next;
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            setConversation(prev => [...prev, { role: 'model', text: "Sorry, I hit a snag while looking that up. Please try again." }]);
+            const errorMsg = error?.message || "Connection interrupted. Terminal retry advised.";
+            setConversation(prev => {
+                const next = [...prev];
+                if (next[next.length - 1]?.role === 'model') {
+                    next[next.length - 1] = { role: 'model', text: errorMsg, isError: true };
+                    return next;
+                }
+                return [...prev, { role: 'model', text: errorMsg, isError: true }];
+            });
         } finally {
             setIsLoading(false);
         }
     }, [question, isLoading, field]);
 
     return (
-        <div className="max-w-4xl mx-auto py-4 md:py-8 flex flex-col min-h-[500px] h-[calc(100vh-10rem)] mb-8">
-            <div className="text-center mb-4 md:mb-6 px-2 flex-shrink-0">
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Industry Q&A</h2>
-                <p className="mt-1 text-xs md:text-sm text-slate-500 dark:text-slate-400">Live insights grounded by Google Search.</p>
+        <div className="max-w-5xl mx-auto py-6 md:py-10 flex flex-col h-[calc(100vh-10rem)] mb-8">
+            <div className="text-center mb-8 px-4 flex-shrink-0">
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Expert Insights</h2>
+                <p className="mt-2 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em]">Google Search Grounded Intelligence</p>
             </div>
             
-            <div className="mb-4 flex justify-center px-2 flex-shrink-0">
-                <div className="relative w-full max-w-xs">
+            <div className="mb-8 flex justify-center px-4 flex-shrink-0">
+                <div className="relative w-full max-w-sm tilt-card">
+                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                        <Icon name="search" className="h-4 w-4 text-indigo-500" />
+                    </div>
                     <select 
                         value={field} 
                         onChange={(e) => setField(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer shadow-sm dark:shadow-lg"
+                        className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-2xl pl-12 pr-10 py-4 text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white appearance-none focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer shadow-3d"
                     >
                         {industryFields.map(f => <option key={f} value={f}>{f}</option>)}
                     </select>
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                 </div>
             </div>
 
-            <div className="flex-grow bg-slate-100 dark:bg-slate-800/50 rounded-2xl p-3 md:p-6 overflow-y-auto mb-4 border border-slate-200 dark:border-slate-700/50 shadow-inner custom-scrollbar transition-colors">
+            <div className="flex-grow glass-panel rounded-[40px] p-6 md:p-10 overflow-y-auto mb-6 border-t-2 border-l-2 border-white/40 shadow-3d custom-scrollbar relative mx-4">
                 {conversation.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-slate-400 dark:text-slate-500 space-y-4 px-6 text-center">
-                        <div className="p-4 bg-white dark:bg-slate-700/30 rounded-full shadow-sm">
-                            <Icon name="qa" className="h-10 w-10 md:h-12 md:w-12 opacity-30 text-indigo-400" />
+                    <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center space-y-6">
+                        <div className="p-8 bg-indigo-600/5 dark:bg-indigo-600/10 rounded-[40px] shadow-inner-soft tilt-card">
+                            <Icon name="qa" className="h-16 w-16 text-indigo-600 animate-pulse" />
                         </div>
-                        <p className="text-sm md:text-base max-w-xs">Start a conversation with an expert in <span className="text-indigo-600 dark:text-indigo-400 font-bold">{field}</span>.</p>
+                        <div className="space-y-2">
+                            <p className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Channel Open</p>
+                            <p className="text-sm font-bold text-slate-400 max-w-xs mx-auto">Query the industry mainframe about <span className="text-indigo-600 dark:text-indigo-400">{field}</span>.</p>
+                        </div>
                     </div>
                 )}
-                <div className="space-y-4 md:space-y-6">
+                <div className="space-y-8">
                     {conversation.map((msg, index) => (
-                        <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[92%] md:max-w-[85%] px-4 py-3 rounded-2xl shadow-md ${
-                                msg.role === 'user' 
-                                ? 'bg-indigo-600 text-white rounded-tr-none' 
-                                : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200 dark:border-slate-600/50'
+                        <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
+                            <div className={`max-w-[85%] px-8 py-5 rounded-[30px] shadow-3d ${
+                                msg.isError 
+                                ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-200' 
+                                : msg.role === 'user' 
+                                  ? 'bg-indigo-600 text-white rounded-tr-none border-white/20' 
+                                  : 'glass-panel text-slate-900 dark:text-white rounded-tl-none border-white/40'
                             }`}>
-                                <div className={`prose prose-sm max-w-none break-words ${msg.role === 'user' ? 'prose-invert' : 'dark:prose-invert text-slate-800 dark:text-slate-100'}`} style={{whiteSpace: 'pre-wrap'}}>
+                                <div className="prose prose-sm max-w-none break-words font-semibold leading-relaxed" style={{whiteSpace: 'pre-wrap'}}>
                                     {msg.text}
-                                    {msg.isStreaming && <span className="inline-block w-1.5 h-4 ml-1 bg-sky-500 animate-pulse align-middle" />}
+                                    {msg.isStreaming && <span className="inline-block w-2 h-5 ml-2 bg-indigo-400 animate-pulse align-middle rounded-sm" />}
                                 </div>
                                 {msg.sources && msg.sources.length > 0 && (
-                                  <div className={`mt-3 pt-3 border-t ${msg.role === 'user' ? 'border-white/20' : 'border-slate-200 dark:border-slate-600/50'}`}>
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${msg.role === 'user' ? 'text-white/70' : 'text-sky-600 dark:text-sky-400'}`}>Verified Sources:</p>
-                                    <div className="flex flex-wrap gap-1.5">
+                                  <div className={`mt-6 pt-5 border-t ${msg.role === 'user' ? 'border-white/20' : 'border-slate-100 dark:border-slate-800'}`}>
+                                    <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${msg.role === 'user' ? 'text-white/60' : 'text-indigo-600 dark:text-indigo-400'}`}>Verified Intel Sources:</p>
+                                    <div className="flex flex-wrap gap-2">
                                       {msg.sources.map((source, sIdx) => (
                                         <a 
                                           key={sIdx} 
                                           href={source.uri} 
                                           target="_blank" 
                                           rel="noopener noreferrer"
-                                          className={`text-[10px] px-2 py-1 rounded-md border transition-all inline-flex items-center gap-1 max-w-[140px] truncate ${
+                                          className={`text-[9px] font-black uppercase px-4 py-2 rounded-xl border transition-all inline-flex items-center gap-2 max-w-[180px] truncate ${
                                             msg.role === 'user'
                                             ? 'bg-white/10 text-white border-white/20 hover:bg-white/20'
-                                            : 'bg-slate-50 dark:bg-slate-800 text-sky-600 dark:text-sky-300 border-sky-100 dark:border-sky-900/50 hover:bg-slate-100 dark:hover:bg-slate-900'
+                                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-100 dark:border-slate-700 hover:shadow-lg'
                                           }`}
-                                          title={source.title}
                                         >
-                                          <Icon name="search" className="h-2.5 w-2.5 flex-shrink-0" />
+                                          <Icon name="search" className="h-3 w-3 flex-shrink-0" />
                                           <span className="truncate">{source.title}</span>
                                         </a>
                                       ))}
@@ -156,40 +180,23 @@ const IndustryQA: React.FC = () => {
                 <div ref={conversationEndRef} />
             </div>
 
-            <form onSubmit={handleSubmit} className="relative flex items-center gap-2 bg-white dark:bg-slate-800 p-1.5 md:p-2 rounded-2xl border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-indigo-500/50 transition-all shadow-lg mx-2 md:mx-0 flex-shrink-0">
+            <form onSubmit={handleSubmit} className="relative flex items-center gap-3 p-3 bg-white dark:bg-slate-900 rounded-[35px] shadow-3d border-2 border-slate-100 dark:border-slate-800 focus-within:border-indigo-500 transition-all mx-4 flex-shrink-0">
                 <input
                     type="text"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
-                    placeholder={`Ask about ${field}...`}
-                    className="flex-grow bg-transparent border-none rounded-xl px-4 py-2.5 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    placeholder={`Query Terminal: ${field}...`}
+                    className="flex-grow bg-transparent border-none rounded-2xl px-6 py-4 text-base font-semibold text-slate-900 dark:text-white focus:outline-none placeholder:text-slate-400"
                     disabled={isLoading}
                 />
-                <Button 
+                <button 
                     type="submit" 
-                    isLoading={isLoading} 
-                    disabled={!question.trim()} 
-                    className="rounded-xl px-4 md:px-6 h-10 md:h-11 flex-shrink-0"
+                    disabled={!question.trim() || isLoading} 
+                    className="bg-indigo-600 hover:bg-indigo-500 p-5 rounded-[25px] btn-3d shadow-xl transition-all disabled:opacity-50"
                 >
-                    <Icon name="send" className="h-5 w-5"/>
-                </Button>
+                    <Icon name="send" className="h-6 w-6 text-white"/>
+                </button>
             </form>
-            
-            <style dangerouslySetInnerHTML={{ __html: `
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 4px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(148, 163, 184, 0.2);
-                    border-radius: 10px;
-                }
-                .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(71, 85, 105, 0.5);
-                }
-            `}} />
         </div>
     );
 };

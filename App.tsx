@@ -20,10 +20,10 @@ const LoadingScreen = () => (
         <Icon name="logo" className="h-12 w-12 text-white" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Initializing CareerDev</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Loading Your Career Dashboard</h2>
         <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium">
           <Spinner /> 
-          <span>Synchronizing secure services...</span>
+          <span>Connecting to secure services...</span>
         </div>
       </div>
     </div>
@@ -45,28 +45,43 @@ const ApiKeyGate = ({ onAuthorized }: { onAuthorized: () => void }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
-      <div className="max-w-md w-full space-y-8 p-10 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+      <div className="max-w-md w-full space-y-8 p-10 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800">
         <div className="flex justify-center">
-          <div className="bg-indigo-600 p-4 rounded-xl shadow-lg shadow-indigo-500/20">
+          <div className="bg-indigo-600 p-5 rounded-2xl shadow-xl shadow-indigo-500/20">
             <Icon name="logo" className="h-10 w-10 text-white" />
           </div>
         </div>
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-            AI Connection
+        <div className="space-y-4">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            Setup AI Features
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Please link your Gemini API key to enable AI-powered resume analysis and career advice.
-          </p>
+          <div className="text-left bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 space-y-4">
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+              To use our career AI tools, please ensure your <code className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded font-mono text-xs">API_KEY</code> is active.
+            </p>
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Requirements:</p>
+              <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-500 mt-0.5">•</span>
+                  <span>Google Gemini API Key</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-indigo-500 mt-0.5">•</span>
+                  <span>Paid Google Cloud project recommended</span>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <button
           onClick={handleConnect}
-          className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-3"
+          className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-sm rounded-2xl transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3 active:scale-[0.98]"
         >
           <Icon name="network" className="h-5 w-5" />
-          Authorize Gemini AI
+          Open Platform
         </button>
       </div>
     </div>
@@ -101,15 +116,15 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-3">
-              Career Dashboard
+              Your Dashboard
             </h1>
             <p className="text-slate-500 dark:text-slate-400 max-w-2xl text-lg">
-              Greetings, {user.fullName.split(' ')[0]}. Manage your professional documents and career strategy.
+              Hello, {user.fullName.split(' ')[0]}. Ready to build your professional future?
             </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl shadow-sm">
-               <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Profile Strength</span>
+               <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Resume Strength</span>
                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.resumeComplete}%</span>
             </div>
           </div>
@@ -119,20 +134,20 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
         <section>
           <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Professional Advice</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">AI Career Tools</h2>
             <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card
-              title="Career Advisor"
-              description="Discuss strategy, interview prep, and career pathing with our AI assistant."
+              title="Career AI"
+              description="Chat about career strategy, interview prep, and your path to success."
               icon={<Icon name="chat" />}
               onClick={() => navigateTo(Page.Chat)}
               className="bg-white dark:bg-slate-900"
             />
             <Card
-              title="Industry QA"
-              description="Real-time industry insights and skill gap analysis using search grounding."
+              title="Expert Insights"
+              description="Get real-time answers about job markets, salaries, and required skills."
               icon={<Icon name="qa" />}
               onClick={() => navigateTo(Page.IndustryQA)}
               className="bg-white dark:bg-slate-900"
@@ -142,20 +157,20 @@ const Home = ({ navigateTo, user }: { navigateTo: (page: Page) => void; user: Us
 
         <section>
           <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Documents</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Your Documents</h2>
             <div className="h-px bg-slate-200 dark:bg-slate-800 flex-grow"></div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <Card
-              title="Resume Builder"
-              description="Create and refine your professional resume with AI writing assistance."
+              title="Resume Editor"
+              description="Create and refine a professional resume with AI assistance."
               icon={<Icon name="resume" />}
               onClick={() => navigateTo(Page.ResumeBuilder)}
               className="bg-white dark:bg-slate-900"
             />
             <Card
-              title="Resume Analyzer"
-              description="Upload your current resume for an instant deep-scan and improvement score."
+              title="Resume Feedback"
+              description="Upload your resume to get an instant AI score and improvement tips."
               icon={<Icon name="analyzer" />}
               onClick={() => navigateTo(Page.ResumeAnalyzer)}
               className="bg-indigo-600 text-white border-transparent"
@@ -183,18 +198,16 @@ const App: React.FC = () => {
   useEffect(() => {
     const initApp = async () => {
       try {
-        // Detect if we're in a browser environment with aistudio tools
+        const apiKey = process.env.API_KEY;
         // @ts-ignore
         if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
           // @ts-ignore
           const hasKey = await window.aistudio.hasSelectedApiKey();
-          setIsKeySelected(hasKey);
+          setIsKeySelected(hasKey || !!apiKey);
         } else {
-          // Default to true for standard web hosting (Vercel)
           setIsKeySelected(true);
         }
 
-        // Setup auth listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
           if (session) {
             try {
@@ -222,11 +235,10 @@ const App: React.FC = () => {
         const savedTheme = localStorage.getItem('careerdev_theme');
         setIsDark(savedTheme === 'dark');
       } catch (err) {
-        console.error("App initialization crashed:", err);
-        setIsKeySelected(true); // Fallback to proceed
+        console.error("App initialization error:", err);
+        setIsKeySelected(true);
       } finally {
-        // Ensure the loading screen shows for a minimum professional duration
-        setTimeout(() => setInitialized(true), 1000);
+        setTimeout(() => setInitialized(true), 800);
       }
     };
     initApp();
@@ -259,7 +271,6 @@ const App: React.FC = () => {
     return <LoadingScreen />;
   }
 
-  // If a key is explicitly required but missing (Dev sandbox behavior)
   if (isKeySelected === false) {
     return <ApiKeyGate onAuthorized={() => setIsKeySelected(true)} />;
   }

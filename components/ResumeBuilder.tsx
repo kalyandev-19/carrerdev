@@ -72,7 +72,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
     };
 
     const handleDownload = () => {
-        // Ensure data is saved before download
         handleSave();
         window.print();
     };
@@ -104,11 +103,11 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
     const handleGenerateAI = useCallback(async (section: 'summary' | 'responsibilities', context?: string, index?: number) => {
         let prompt = '';
         if (section === 'summary') {
-            prompt = `Write a professional summary for a student's resume. Name: ${resume.fullName}. Key skills: ${resume.skills}. The student is seeking an internship. Focus on value proposition.`;
+            prompt = `Write a professional summary for a student's resume. Name: ${resume.fullName}. Key skills: ${resume.skills}. Seek internship. Focus on value proposition.`;
             setLoadingSection('summary');
         } else if (section === 'responsibilities' && typeof index === 'number') {
             const exp = resume.experience[index];
-            prompt = `Write 3 concise, high-impact resume bullet points for the role of ${exp.role} at ${exp.company}. Use the STAR method (Situation, Task, Action, Result). Focus on outcomes and quantifiable metrics.`;
+            prompt = `Write 3 impactful resume bullets for ${exp.role} at ${exp.company}. Use STAR method and metrics.`;
             setLoadingSection(`responsibilities-${index}`);
         }
 
@@ -138,7 +137,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
     }, [resume]);
 
     const ResumePreviewContent = () => (
-        <div id="resume-printable-area" className="bg-white text-slate-900 shadow-2xl mx-auto flex flex-col transition-all duration-500 origin-top resume-paper"
+        <div id="resume-printable-area" className="bg-white text-slate-900 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.25)] mx-auto flex flex-col transition-all duration-500 origin-top resume-paper border border-slate-100"
             style={{ width: '794px', minHeight: '1123px', padding: '64px', transform: `scale(${previewScale})`, marginBottom: `calc((1123px * ${previewScale}) - 1123px)` }}>
             <header className="text-center mb-10">
                 <h1 className="text-5xl font-black text-slate-950 tracking-tighter uppercase leading-none mb-4">{resume.fullName || 'YOUR NAME'}</h1>
@@ -161,7 +160,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                     <h2 className="text-[14px] font-black text-indigo-700 uppercase tracking-widest whitespace-nowrap">Experience</h2>
                     <div className="h-[2px] bg-slate-100 flex-grow"></div>
                 </div>
-                {resume.experience.length === 0 && <p className="text-slate-400 text-sm italic">No experience added yet...</p>}
                 {resume.experience.map(exp => (
                     <div key={exp.id} className="relative mb-6">
                         <div className="flex justify-between items-baseline mb-1">
@@ -171,7 +169,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                         <div className="text-[13px] font-bold text-indigo-600 mb-3 italic">{exp.company || 'Organization Name'}</div>
                         <ul className="list-disc ml-5 text-[13px] text-slate-700 space-y-2 leading-relaxed">
                             {exp.responsibilities.split('\n').filter(l => l.trim()).map((line, i) => (
-                              <li key={i} className="pl-1">{line.replace(/^[•\-\*]\s*/, '').trim()}</li>
+                              <li key={i}>{line.replace(/^[•\-\*]\s*/, '').trim()}</li>
                             ))}
                         </ul>
                     </div>
@@ -182,7 +180,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                     <h2 className="text-[14px] font-black text-indigo-700 uppercase tracking-widest whitespace-nowrap">Education</h2>
                     <div className="h-[2px] bg-slate-100 flex-grow"></div>
                 </div>
-                {resume.education.length === 0 && <p className="text-slate-400 text-sm italic">No education added yet...</p>}
                 {resume.education.map(edu => (
                     <div key={edu.id} className="mb-4">
                         <div className="flex justify-between items-baseline mb-1">
@@ -196,17 +193,6 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                     </div>
                 ))}
             </section>
-            <section className="mb-10">
-                <div className="flex items-center gap-4 mb-4">
-                    <h2 className="text-[14px] font-black text-indigo-700 uppercase tracking-widest whitespace-nowrap">Expertise</h2>
-                    <div className="h-[2px] bg-slate-100 flex-grow"></div>
-                </div>
-                <div className="flex flex-wrap gap-2.5">
-                    {resume.skills ? resume.skills.split(',').filter(s => s.trim()).map((skill, i) => (
-                      <span key={i} className="text-[11px] border border-slate-200 px-4 py-1.5 rounded-lg font-bold bg-slate-50 text-slate-700 uppercase tracking-tighter">{skill.trim()}</span>
-                    )) : <p className="text-slate-400 text-sm italic">No skills added...</p>}
-                </div>
-            </section>
         </div>
     );
 
@@ -214,12 +200,8 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
         <div className="py-8">
             <style dangerouslySetInnerHTML={{ __html: `
                 @media print {
-                    body * {
-                        visibility: hidden;
-                    }
-                    #resume-printable-area, #resume-printable-area * {
-                        visibility: visible;
-                    }
+                    body * { visibility: hidden; }
+                    #resume-printable-area, #resume-printable-area * { visibility: visible; }
                     #resume-printable-area {
                         position: absolute;
                         left: 0;
@@ -230,120 +212,88 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                         transform: scale(1) !important;
                         box-shadow: none !important;
                     }
-                    @page {
-                        size: A4;
-                        margin: 0;
-                    }
+                    @page { size: A4; margin: 0; }
                 }
             `}} />
             
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Resume Workspace</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Real-time professional document generator</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+                <div className="animate-in slide-in-from-left-4 duration-500">
+                    <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Resume Editor</h2>
+                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">3D Spatial Workspace</p>
                 </div>
-                <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
-                    <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl lg:hidden flex-grow md:flex-grow-0">
-                        <button onClick={() => setActiveTab('edit')} className={`flex-1 px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === 'edit' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Edit</button>
-                        <button onClick={() => setActiveTab('preview')} className={`flex-1 px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === 'preview' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Preview</button>
+                <div className="flex items-center gap-3 w-full md:w-auto animate-in slide-in-from-right-4 duration-500">
+                    <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-2xl lg:hidden flex-grow md:flex-grow-0">
+                        <button onClick={() => setActiveTab('edit')} className={`flex-1 px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'edit' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-3d' : 'text-slate-500'}`}>Edit</button>
+                        <button onClick={() => setActiveTab('preview')} className={`flex-1 px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'preview' ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-3d' : 'text-slate-500'}`}>Preview</button>
                     </div>
-                    
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <div className="hidden sm:flex items-center px-2 mr-2 border-r border-slate-200 dark:border-slate-700">
-                          <span className={`text-[10px] font-black uppercase tracking-widest ${saveStatus === 'saved' ? 'text-green-500' : saveStatus === 'saving' ? 'text-sky-400 animate-pulse' : 'text-orange-400'}`}>
-                            {saveStatus === 'saved' ? 'Synced' : saveStatus === 'saving' ? 'Saving...' : 'Draft'}
-                          </span>
-                        </div>
-                        <Button onClick={handleSave} disabled={saveStatus === 'saved'} className="h-9 bg-slate-100 !text-slate-700 hover:bg-slate-200 border-none shadow-none">
-                            Save
-                        </Button>
-                        <Button onClick={handleDownload} className="h-9 px-6 bg-indigo-600 hover:bg-indigo-700 flex items-center gap-2">
-                            <Icon name="logo" className="h-4 w-4" />
-                            Download PDF
-                        </Button>
-                    </div>
+                    <Button onClick={handleDownload} className="h-12 px-8 btn-3d bg-indigo-600 hover:bg-indigo-500 rounded-2xl flex items-center gap-3 active:scale-95">
+                        <Icon name="logo" className="h-5 w-5" />
+                        Download
+                    </Button>
                 </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div className={`space-y-8 h-fit ${activeTab === 'preview' ? 'hidden lg:block' : 'block'}`}>
                     {/* Contact Info */}
-                    <section className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
-                        <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-700 pb-4">
-                            <Icon name="logo" className="h-5 w-5 text-indigo-600" />
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Contact Info</h3>
+                    <section className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-6">
+                        <div className="flex items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
+                            <div className="bg-indigo-600/10 p-3 rounded-2xl">
+                                <Icon name="logo" className="h-6 w-6 text-indigo-600" />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Personal Details</h3>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input label="Full Name" value={resume.fullName} onChange={e => handleChange('fullName', e.target.value)} />
-                            <Input label="Email" type="email" value={resume.email} onChange={e => handleChange('email', e.target.value)} />
-                            <Input label="Phone" value={resume.phone} onChange={e => handleChange('phone', e.target.value)} />
-                            <Input label="LinkedIn URL" value={resume.linkedin} onChange={e => handleChange('linkedin', e.target.value)} />
-                            <Input label="GitHub URL" value={resume.github} onChange={e => handleChange('github', e.target.value)} />
-                            <Input label="Skills (comma separated)" value={resume.skills} onChange={e => handleChange('skills', e.target.value)} placeholder="React, TypeScript, Figma..." />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Input label="FULL NAME" value={resume.fullName} onChange={e => handleChange('fullName', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
+                            <Input label="EMAIL ADDRESS" type="email" value={resume.email} onChange={e => handleChange('email', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
+                            <Input label="PHONE NUMBER" value={resume.phone} onChange={e => handleChange('phone', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
+                            <Input label="LINKEDIN PROFILE" value={resume.linkedin} onChange={e => handleChange('linkedin', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
+                            <Input label="GITHUB REPO" value={resume.github} onChange={e => handleChange('github', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
+                            <Input label="TECHNICAL SKILLS" value={resume.skills} onChange={e => handleChange('skills', e.target.value)} placeholder="REACT, PYTHON..." className="!rounded-2xl !py-4 shadow-inner-soft" />
                         </div>
                     </section>
 
                     {/* Summary */}
-                    <section className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
-                            <div className="flex items-center gap-3">
-                                <Icon name="analyzer" className="h-5 w-5 text-sky-600" />
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Summary</h3>
+                    <section className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-sky-600/10 p-3 rounded-2xl">
+                                    <Icon name="analyzer" className="h-6 w-6 text-sky-600" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Professional Bio</h3>
                             </div>
-                            <Button onClick={() => handleGenerateAI('summary')} isLoading={loadingSection === 'summary'} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 h-8 text-xs font-bold">AI Write</Button>
+                            <Button onClick={() => handleGenerateAI('summary')} isLoading={loadingSection === 'summary'} className="bg-white dark:bg-slate-700 !text-indigo-600 dark:!text-indigo-400 h-10 px-6 rounded-xl font-black text-[10px] tracking-widest border border-slate-200 dark:border-slate-600 shadow-sm">AI ASSIST</Button>
                         </div>
-                        <Textarea rows={4} value={resume.summary} onChange={e => handleChange('summary', e.target.value)} placeholder="Goals and high-level summary..." />
+                        <Textarea rows={4} value={resume.summary} onChange={e => handleChange('summary', e.target.value)} className="!rounded-2xl !py-4 shadow-inner-soft" />
                     </section>
 
                     {/* Experience Section */}
-                    <section className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
-                            <div className="flex items-center gap-3">
-                                <Icon name="roadmap" className="h-5 w-5 text-emerald-600" />
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Work Experience</h3>
-                            </div>
-                            <button onClick={() => addEntry('experience')} className="text-xs font-bold text-indigo-600 hover:text-indigo-700">+ Add Job</button>
-                        </div>
-                        <div className="space-y-6">
-                            {resume.experience.map((exp, idx) => (
-                                <div key={exp.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700 relative">
-                                    <button onClick={() => removeEntry('experience', idx)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500"><Icon name="sun" className="h-4 w-4 rotate-45" /></button>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                        <Input label="Company" value={exp.company} onChange={e => handleNestedChange('experience', idx, 'company', e.target.value)} />
-                                        <Input label="Role" value={exp.role} onChange={e => handleNestedChange('experience', idx, 'role', e.target.value)} />
-                                        <Input label="Start Date" value={exp.startDate} onChange={e => handleNestedChange('experience', idx, 'startDate', e.target.value)} placeholder="Month Year" />
-                                        <Input label="End Date" value={exp.endDate} onChange={e => handleNestedChange('experience', idx, 'endDate', e.target.value)} placeholder="Present / Month Year" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-xs font-bold text-slate-500 uppercase">Responsibilities (STAR Method)</label>
-                                            <Button onClick={() => handleGenerateAI('responsibilities', '', idx)} isLoading={loadingSection === `responsibilities-${idx}`} className="h-7 text-[10px] px-2 bg-indigo-50 text-indigo-600">AI Optimize</Button>
-                                        </div>
-                                        <Textarea rows={3} value={exp.responsibilities} onChange={e => handleNestedChange('experience', idx, 'responsibilities', e.target.value)} placeholder="Describe what you did..." />
-                                    </div>
+                    <section className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-emerald-600/10 p-3 rounded-2xl">
+                                    <Icon name="roadmap" className="h-6 w-6 text-emerald-600" />
                                 </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Education Section */}
-                    <section className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
-                            <div className="flex items-center gap-3">
-                                <Icon name="education" className="h-5 w-5 text-amber-600" />
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Education</h3>
+                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Experience</h3>
                             </div>
-                            <button onClick={() => addEntry('education')} className="text-xs font-bold text-indigo-600 hover:text-indigo-700">+ Add School</button>
+                            <button onClick={() => addEntry('experience')} className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600 hover:text-indigo-700">+ New Job</button>
                         </div>
-                        <div className="space-y-6">
-                            {resume.education.map((edu, idx) => (
-                                <div key={edu.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700 relative">
-                                    <button onClick={() => removeEntry('education', idx)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500"><Icon name="sun" className="h-4 w-4 rotate-45" /></button>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Input label="School / University" value={edu.school} onChange={e => handleNestedChange('education', idx, 'school', e.target.value)} />
-                                        <Input label="Degree / Certificate" value={edu.degree} onChange={e => handleNestedChange('education', idx, 'degree', e.target.value)} />
-                                        <Input label="Start Date" value={edu.startDate} onChange={e => handleNestedChange('education', idx, 'startDate', e.target.value)} />
-                                        <Input label="End Date" value={edu.endDate} onChange={e => handleNestedChange('education', idx, 'endDate', e.target.value)} />
-                                        <Input label="GPA (Optional)" value={edu.gpa} onChange={e => handleNestedChange('education', idx, 'gpa', e.target.value)} />
+                        <div className="space-y-8">
+                            {resume.experience.map((exp, idx) => (
+                                <div key={exp.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft animate-in zoom-in-95 duration-300">
+                                    <button onClick={() => removeEntry('experience', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 transition-colors"><Icon name="sun" className="h-5 w-5 rotate-45" /></button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                        <Input label="COMPANY" value={exp.company} onChange={e => handleNestedChange('experience', idx, 'company', e.target.value)} className="!rounded-xl" />
+                                        <Input label="ROLE" value={exp.role} onChange={e => handleNestedChange('experience', idx, 'role', e.target.value)} className="!rounded-xl" />
+                                        <Input label="START" value={exp.startDate} onChange={e => handleNestedChange('experience', idx, 'startDate', e.target.value)} className="!rounded-xl" />
+                                        <Input label="END" value={exp.endDate} onChange={e => handleNestedChange('experience', idx, 'endDate', e.target.value)} className="!rounded-xl" />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center px-1">
+                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Key Accomplishments</label>
+                                            <Button onClick={() => handleGenerateAI('responsibilities', '', idx)} isLoading={loadingSection === `responsibilities-${idx}`} className="h-8 text-[9px] px-4 bg-indigo-50 text-indigo-600 border-none">Optimize with AI</Button>
+                                        </div>
+                                        <Textarea rows={3} value={exp.responsibilities} onChange={e => handleNestedChange('experience', idx, 'responsibilities', e.target.value)} className="!rounded-xl" />
                                     </div>
                                 </div>
                             ))}
@@ -352,16 +302,10 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                 </div>
 
                 <div ref={previewContainerRef} className={`sticky top-24 ${activeTab === 'edit' ? 'hidden lg:block' : 'block'}`}>
-                    <div className="bg-slate-100 dark:bg-slate-950 p-2 md:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner overflow-hidden flex flex-col items-center">
-                        <div className="w-full h-[calc(100vh-14rem)] overflow-y-auto custom-scrollbar flex flex-col items-center pt-4 pb-20">
+                    <div className="glass-panel p-8 rounded-[50px] shadow-3d border-t-2 border-l-2 border-white/40 overflow-hidden flex flex-col items-center">
+                        <div className="w-full h-[calc(100vh-16rem)] overflow-y-auto custom-scrollbar flex flex-col items-center pt-8 pb-32">
                             <ResumePreviewContent />
                         </div>
-                    </div>
-                    {/* Mobile Only Save Floating Button */}
-                    <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] flex gap-2">
-                        <Button onClick={handleSave} disabled={saveStatus === 'saved'} className="flex-grow shadow-2xl h-12 rounded-2xl">
-                          {saveStatus === 'saving' ? 'Saving...' : 'Save Draft'}
-                        </Button>
                     </div>
                 </div>
             </div>

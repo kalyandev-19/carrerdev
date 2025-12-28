@@ -1,12 +1,34 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { GroundingSource, ResumeData } from "../types.ts";
+import { GroundingSource } from "../types.ts";
 
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey.startsWith('sk-or-')) {
+    throw new Error("Invalid or missing API Key. Please ensure you are using a Google Gemini API Key (starting with AIza) configured in your environment variables.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
+const handleAIError = (error: any) => {
+  console.error("Gemini API Error:", error);
+  const message = error?.message || "";
+  
+  if (message.includes("Requested entity was not found")) {
+    // @ts-ignore
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      // @ts-ignore
+      window.aistudio.openSelectKey();
+    }
+    throw new Error("The API key provided is not authorized or the project is missing. Please select a valid key from a paid Google Cloud project.");
+  }
+
+  throw error;
+};
 
 export const askIndustryExpertStream = async function* (field: string, question: string) {
-  const ai = getAI();
   try {
+    const ai = getAIClient();
     const responseStream = await ai.models.generateContentStream({
       model: 'gemini-3-flash-preview',
       contents: [{
@@ -25,14 +47,13 @@ export const askIndustryExpertStream = async function* (field: string, question:
       yield chunk;
     }
   } catch (error) {
-    console.error("Error asking industry expert:", error);
-    throw error;
+    handleAIError(error);
   }
 };
 
 export const generateResumeSectionStream = async function* (prompt: string) {
-    const ai = getAI();
     try {
+        const ai = getAIClient();
         const responseStream = await ai.models.generateContentStream({
             model: 'gemini-3-flash-preview',
             contents: [{
@@ -46,14 +67,11 @@ export const generateResumeSectionStream = async function* (prompt: string) {
             yield chunk.text || "";
         }
     } catch (error) {
-        console.error("Error generating resume section:", error);
-        throw error;
+        handleAIError(error);
     }
 };
 
 export const analyzeResumeStream = async function* (content: string | { data: string, mimeType: string }) {
-  const ai = getAI();
-  
   const systemPrompt = `
     Analyze the following resume and provide feedback. Structure your feedback into the following sections:
     1.  **Overall Impression**
@@ -80,6 +98,7 @@ export const analyzeResumeStream = async function* (content: string | { data: st
   }
 
   try {
+    const ai = getAIClient();
     const responseStream = await ai.models.generateContentStream({
       model: 'gemini-3-flash-preview',
       contents: [{ parts }],
@@ -91,7 +110,6 @@ export const analyzeResumeStream = async function* (content: string | { data: st
         yield chunk.text || "";
     }
   } catch (error) {
-    console.error("Error analyzing resume:", error);
-    throw error;
+    handleAIError(error);
   }
 };

@@ -5,8 +5,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CareerDev AI | Scientific Career Intelligence</title>
-    <!-- Importing Geist and Geist Mono from Google Fonts -->
+    <title>CareerDev AI | 3D Spatial Intelligence</title>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -18,15 +17,55 @@
               sans: ['Geist', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
               mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
             },
-            colors: {
-              slate: {
-                950: '#020617',
-              }
+            boxShadow: {
+              '3d': '0 20px 50px rgba(0,0,0,0.1), 0 5px 15px rgba(0,0,0,0.05)',
+              '3d-hover': '0 30px 60px rgba(0,0,0,0.12), 0 10px 20px rgba(0,0,0,0.08)',
+              'inner-soft': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
             }
           }
         }
       }
     </script>
+    <style>
+      :root {
+        --depth-bg: #f8fafc;
+      }
+      .dark {
+        --depth-bg: #020617;
+      }
+      body {
+        perspective: 1200px;
+        background: var(--depth-bg);
+      }
+      .tilt-card {
+        transform-style: preserve-3d;
+        transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.4s ease;
+      }
+      .tilt-card:hover {
+        transform: rotateX(4deg) rotateY(-4deg) translateZ(15px);
+      }
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      .dark .glass-panel {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .btn-3d {
+        position: relative;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 0px 0px #4338ca; /* Indigo-700 */
+      }
+      .btn-3d:active {
+        transform: translateY(2px);
+        box-shadow: 0 2px 0px 0px #4338ca;
+      }
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+    </style>
   <script type="importmap">
 {
   "imports": {
@@ -39,7 +78,7 @@
 }
 </script>
 </head>
-  <body class="transition-colors duration-300 font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+  <body class="transition-colors duration-300 font-sans">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

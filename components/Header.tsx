@@ -53,8 +53,8 @@ const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout
           
           <div className="hidden lg:flex items-center space-x-1">
             <NavLink page={Page.Home} currentPage={currentPage} navigateTo={navigateTo}>Dashboard</NavLink>
-            <NavLink page={Page.ResumeBuilder} currentPage={currentPage} navigateTo={navigateTo}>Resume Builder</NavLink>
-            <NavLink page={Page.Chat} currentPage={currentPage} navigateTo={navigateTo}>Advisor</NavLink>
+            <NavLink page={Page.ResumeBuilder} currentPage={currentPage} navigateTo={navigateTo}>Resume Editor</NavLink>
+            <NavLink page={Page.Chat} currentPage={currentPage} navigateTo={navigateTo}>Career AI</NavLink>
           </div>
 
           <div className="flex items-center gap-3">

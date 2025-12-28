@@ -20,14 +20,13 @@ const ResumeAnalyzer: React.FC = () => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const result = e.target?.result as string;
-                // FileReader result for readAsDataURL starts with "data:mime/type;base64,"
                 const base64Data = result.split(',')[1];
                 setSelectedFile({
                     data: base64Data,
                     mimeType: file.type || 'application/octet-stream',
                     name: file.name
                 });
-                setResumeText(''); // Clear text when file is selected
+                setResumeText('');
             };
             reader.onerror = () => setError('Failed to read file.');
             reader.readAsDataURL(file);
@@ -58,50 +57,55 @@ const ResumeAnalyzer: React.FC = () => {
             }
         } catch (error) {
             console.error(error);
-            setError('Failed to analyze resume. The file might be too large or an unsupported format.');
+            setError('Failed to analyze. Try a smaller file or plain text.');
         } finally {
             setIsLoading(false);
         }
     }, [resumeText, selectedFile]);
 
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4">
-            <div className="text-center mb-10">
-                <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white">Resume Analyzer</h2>
-                <p className="mt-2 text-slate-600 dark:text-slate-400">Upload your resume in any format for AI-powered feedback.</p>
+        <div className="max-w-4xl mx-auto py-12 px-6">
+            <div className="text-center mb-12 animate-in fade-in duration-700">
+                <h2 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Resume Feedback</h2>
+                <p className="mt-3 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-xs">AI-Powered Diagnostic Scanner</p>
             </div>
             
-            <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl transition-all">
+            <div className="tilt-card glass-panel p-10 md:p-14 rounded-[50px] shadow-3d border-t-2 border-l-2 border-white/40 relative overflow-hidden">
+                {/* 3D Animated Background Elements */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-20" />
+                
                 {!selectedFile ? (
-                    <div className="space-y-6">
-                        <Textarea
-                            label="Option 1: Paste resume text"
-                            rows={8}
-                            value={resumeText}
-                            onChange={(e) => setResumeText(e.target.value)}
-                            placeholder="Paste your resume content here..."
-                            className="text-sm"
-                        />
+                    <div className="space-y-10">
+                        <div className="group relative">
+                           <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-4 ml-2">Manual Terminal Entry</label>
+                           <Textarea
+                                rows={6}
+                                value={resumeText}
+                                onChange={(e) => setResumeText(e.target.value)}
+                                placeholder="PASTE RESUME CONTENT FOR DEEP ANALYSIS..."
+                                className="!rounded-3xl !py-6 !px-8 shadow-inner-soft border-2 border-slate-100 dark:border-slate-800 focus:border-indigo-500 transition-all text-sm font-semibold"
+                            />
+                        </div>
                         
                         <div className="relative py-4">
-                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t-2 border-slate-100 dark:border-slate-800"></div>
                             </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-4 bg-white dark:bg-slate-800 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Or</span>
+                            <div className="relative flex justify-center">
+                                <span className="px-6 bg-white dark:bg-slate-900 text-slate-400 font-black uppercase tracking-[0.5em] text-[10px]">Or</span>
                             </div>
                         </div>
 
                         <div className="space-y-4">
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Option 2: Upload Document</label>
+                            <label className="block text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 ml-2">Hardware Upload</label>
                             <div className="flex items-center justify-center w-full">
-                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 dark:hover:bg-slate-700 dark:bg-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:hover:border-slate-500 transition-all">
+                                <label className="flex flex-col items-center justify-center w-full h-48 border-4 border-slate-100 dark:border-slate-800 border-dashed rounded-[40px] cursor-pointer bg-slate-50/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800 hover:border-indigo-400 transition-all group shadow-inner-soft">
                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <Icon name="resume" className="w-8 h-8 mb-3 text-slate-400" />
-                                        <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
-                                            <span className="font-bold">Click to upload</span> or drag and drop
-                                        </p>
-                                        <p className="text-xs text-slate-400 uppercase font-black tracking-tighter">PDF, Word, Images, or TXT</p>
+                                        <div className="bg-indigo-600/10 p-5 rounded-3xl group-hover:scale-110 transition-transform mb-4 shadow-lg">
+                                            <Icon name="resume" className="w-10 h-10 text-indigo-600" />
+                                        </div>
+                                        <p className="mb-2 text-sm font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Insert Document</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">PDF • DOCX • JPG • PNG</p>
                                     </div>
                                     <input type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.txt" />
                                 </label>
@@ -109,64 +113,87 @@ const ResumeAnalyzer: React.FC = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl p-6 flex flex-col items-center gap-4 animate-in fade-in zoom-in-95">
-                        <div className="bg-white dark:bg-slate-800 p-4 rounded-full shadow-lg">
-                            <Icon name="resume" className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+                    <div className="bg-indigo-600/5 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-[40px] p-10 flex flex-col items-center gap-6 animate-in zoom-in-95 duration-500 shadow-inner-soft">
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-[30px] shadow-3d scale-110">
+                            <Icon name="resume" className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div className="text-center">
-                            <p className="font-bold text-slate-900 dark:text-white truncate max-w-xs">{selectedFile.name}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black mt-1">Ready for scanning</p>
+                            <p className="font-black text-xl text-slate-900 dark:text-white truncate max-w-sm tracking-tight">{selectedFile.name}</p>
+                            <div className="flex items-center justify-center gap-2 mt-2">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em]">Ready for Injection</span>
+                            </div>
                         </div>
                         <button 
                             onClick={clearFile}
-                            className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors flex items-center gap-1"
+                            className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors flex items-center gap-2 mt-4 px-6 py-3 border border-rose-100 dark:border-rose-900/30 rounded-xl"
                         >
-                            <Icon name="sun" className="h-3 w-3 rotate-45" /> Clear and start over
+                            <Icon name="sun" className="h-3 w-3 rotate-45" /> Eject File
                         </button>
                     </div>
                 )}
 
-                <div className="mt-8 flex justify-center">
+                <div className="mt-12 flex justify-center relative">
+                    {isLoading && (
+                        <div className="absolute -top-32 left-0 w-full h-64 pointer-events-none overflow-hidden rounded-[40px]">
+                            <div className="w-full h-1 bg-indigo-500 shadow-[0_0_20px_2px_rgba(99,102,241,0.8)] absolute animate-[scan_2s_infinite]" />
+                        </div>
+                    )}
                     <Button 
                         onClick={handleAnalyze} 
                         isLoading={isLoading} 
                         disabled={!resumeText.trim() && !selectedFile} 
-                        className="w-full md:w-auto px-12 py-3 text-base font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20"
+                        className="w-full md:w-auto px-16 py-5 text-sm font-black uppercase tracking-[0.3em] shadow-2xl rounded-2xl bg-indigo-600 ring-4 ring-indigo-500/10 active:scale-95"
                     >
-                        Deep Scan Resume
+                        Initiate FeedBack
                     </Button>
                 </div>
-                {error && <p className="text-red-500 dark:text-red-400 mt-4 text-sm text-center font-bold">{error}</p>}
+                {error && <p className="text-rose-500 text-[10px] text-center font-black uppercase tracking-widest mt-6">{error}</p>}
             </div>
 
             {(isLoading || analysis) && (
-                <div className="mt-12 bg-white dark:bg-slate-800 p-6 md:p-10 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl transition-all">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
-                            <Icon name="analyzer" />
-                        </div>
-                        <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">AI Diagnostic Results</h3>
-                    </div>
-                    
-                    {isLoading && !analysis ? (
-                        <div className="flex items-center justify-center py-16 flex-col gap-6">
-                            <div className="relative">
-                                <div className="h-20 w-20 rounded-full border-4 border-indigo-600/20 border-t-indigo-600 animate-spin"></div>
-                                <Icon name="analyzer" className="absolute inset-0 m-auto h-8 w-8 text-indigo-600 animate-pulse" />
+                <div className="mt-16 animate-in slide-in-from-bottom-8 duration-700">
+                    <div className="tilt-card glass-panel p-10 md:p-14 rounded-[50px] shadow-3d border-t-2 border-l-2 border-white/40">
+                        <div className="flex items-center gap-5 mb-10 border-b border-slate-100 dark:border-slate-800 pb-8">
+                            <div className="h-14 w-14 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-xl tilt-card">
+                                <Icon name="analyzer" className="h-7 w-7" />
                             </div>
-                            <span className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-xs animate-pulse">Running document OCR & structural analysis...</span>
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">AI Audit Report</h3>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Real-time Intelligence Stream</span>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="prose prose-slate dark:prose-invert max-w-none">
-                             <div 
-                                className="text-slate-700 dark:text-slate-300 leading-relaxed space-y-4"
-                                dangerouslySetInnerHTML={{ __html: analysis.replace(/\n/g, '<br />') }} 
-                             />
-                             {isLoading && <span className="inline-block w-2 h-5 ml-2 bg-indigo-500 animate-pulse align-middle" />}
-                        </div>
-                    )}
+                        
+                        {isLoading && !analysis ? (
+                            <div className="flex items-center justify-center py-20 flex-col gap-8">
+                                <div className="relative">
+                                    <div className="h-24 w-24 rounded-full border-4 border-indigo-600/10 border-t-indigo-600 animate-spin"></div>
+                                    <Icon name="analyzer" className="absolute inset-0 m-auto h-10 w-10 text-indigo-600 animate-pulse" />
+                                </div>
+                                <div className="text-center space-y-2">
+                                    <p className="text-slate-900 dark:text-white font-black uppercase tracking-[0.3em] text-xs">Processing Document Layers</p>
+                                    <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px] animate-pulse">Running Structural Linguistics & STAR Check</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="prose prose-slate dark:prose-invert max-w-none">
+                                <div className="text-slate-700 dark:text-slate-200 leading-loose space-y-6 font-semibold text-base">
+                                    <div dangerouslySetInnerHTML={{ __html: analysis.replace(/\n/g, '<br />') }} />
+                                    {isLoading && <span className="inline-block w-3 h-6 ml-3 bg-indigo-500 animate-pulse align-middle rounded-sm shadow-lg shadow-indigo-500/50" />}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes scan {
+                    0% { transform: translateY(0); opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { transform: translateY(240px); opacity: 0; }
+                }
+            `}} />
         </div>
     );
 };
