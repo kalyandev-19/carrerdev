@@ -12,16 +12,23 @@ const isValidId = (id: string) => id === 'guest-user' || /^[0-9a-f]{8}-[0-9a-f]{
 
 export const databaseService = {
   // --- User & Auth Methods ---
-  createUser: async (email: string, password: string, fullName: string): Promise<{ userId: string }> => {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
+  createUser: async (emailOrPhone: string, password: string, fullName: string, isPhone: boolean): Promise<{ userId: string }> => {
+    const signUpOptions: any = {
       password,
       options: {
         data: {
           full_name: fullName,
         }
       }
-    });
+    };
+
+    if (isPhone) {
+      signUpOptions.phone = emailOrPhone;
+    } else {
+      signUpOptions.email = emailOrPhone;
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.signUp(signUpOptions);
 
     if (authError) throw authError;
     if (!authData.user) throw new Error('User creation failed');
@@ -29,7 +36,8 @@ export const databaseService = {
     // Pre-create profile (will be linked once verified)
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: authData.user.id,
-      email: email,
+      email: isPhone ? null : emailOrPhone,
+      phone: isPhone ? emailOrPhone : null,
       full_name: fullName,
     });
 
@@ -38,12 +46,19 @@ export const databaseService = {
     return { userId: authData.user.id };
   },
 
-  verifyEmailOtp: async (email: string, token: string): Promise<User> => {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
+  verifyOtp: async (emailOrPhone: string, token: string, isPhone: boolean): Promise<User> => {
+    const verifyOptions: any = {
       token,
-      type: 'signup'
-    });
+      type: isPhone ? 'sms' : 'signup'
+    };
+
+    if (isPhone) {
+      verifyOptions.phone = emailOrPhone;
+    } else {
+      verifyOptions.email = emailOrPhone;
+    }
+
+    const { data, error } = await supabase.auth.verifyOtp(verifyOptions);
 
     if (error) throw error;
     if (!data.user) throw new Error('Verification failed');
@@ -56,16 +71,23 @@ export const databaseService = {
 
     return {
       id: data.user.id,
-      email: data.user.email!,
-      fullName: profile?.full_name || data.user.email!.split('@')[0],
+      email: data.user.email || 'no-email',
+      fullName: profile?.full_name || data.user.email?.split('@')[0] || 'User',
     };
   },
 
-  login: async (email: string, password: string): Promise<User> => {
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
+  login: async (emailOrPhone: string, password: string, isPhone: boolean): Promise<User> => {
+    const signInOptions: any = {
       password,
-    });
+    };
+
+    if (isPhone) {
+      signInOptions.phone = emailOrPhone;
+    } else {
+      signInOptions.email = emailOrPhone;
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword(signInOptions);
 
     if (authError) throw authError;
     if (!authData.user) throw new Error('Login failed');
@@ -78,8 +100,8 @@ export const databaseService = {
 
     return {
       id: authData.user.id,
-      email: authData.user.email!,
-      fullName: profile?.full_name || authData.user.email!.split('@')[0],
+      email: authData.user.email || 'no-email',
+      fullName: profile?.full_name || authData.user.email?.split('@')[0] || 'User',
     };
   },
 
@@ -112,8 +134,8 @@ export const databaseService = {
 
     return {
       id: session.user.id,
-      email: session.user.email!,
-      fullName: profile?.full_name || session.user.email!.split('@')[0],
+      email: session.user.email || 'no-email',
+      fullName: profile?.full_name || session.user.email?.split('@')[0] || 'User',
     };
   },
 

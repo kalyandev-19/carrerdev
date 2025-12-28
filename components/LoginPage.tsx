@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { databaseService } from '../services/databaseService.ts';
 import { User } from '../types.ts';
@@ -15,6 +15,8 @@ enum AuthStep {
   SIGNUP,
   VERIFY
 }
+
+type AuthMethod = 'email' | 'phone';
 
 const AppInput = ({ label, placeholder, icon, type = "text", value, onChange, ...rest }: any) => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -69,7 +71,9 @@ const AppInput = ({ label, placeholder, icon, type = "text", value, onChange, ..
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [step, setStep] = useState<AuthStep>(AuthStep.LOGIN);
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [otp, setOtp] = useState('');
@@ -77,6 +81,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
+
+  // Initialize phone with +91 when switching to phone mode
+  useEffect(() => {
+    if (authMethod === 'phone' && !phone) {
+      setPhone('+91');
+    }
+  }, [authMethod]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -92,7 +103,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setError('');
     setLoading(true);
     try {
-      await databaseService.createUser(email, password, fullName);
+      const identifier = authMethod === 'email' ? email : phone;
+      if (!identifier || (authMethod === 'phone' && identifier === '+91')) {
+        throw new Error(authMethod === 'email' ? 'Email required' : 'Complete mobile number required');
+      }
+      await databaseService.createUser(identifier, password, fullName, authMethod === 'phone');
       setStep(AuthStep.VERIFY);
     } catch (err: any) {
       setError(err.message || 'Signup failed.');
@@ -107,7 +122,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setError('');
     setLoading(true);
     try {
-      const user = await databaseService.login(email, password);
+      const identifier = authMethod === 'email' ? email : phone;
+      if (!identifier || (authMethod === 'phone' && identifier === '+91')) {
+        throw new Error(authMethod === 'email' ? 'Email required' : 'Complete mobile number required');
+      }
+      const user = await databaseService.login(identifier, password, authMethod === 'phone');
       onLogin(user);
     } catch (err: any) {
       setError(err.message || 'Login failed.');
@@ -122,7 +141,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setError('');
     setLoading(true);
     try {
-      const user = await databaseService.verifyEmailOtp(email, otp);
+      const identifier = authMethod === 'email' ? email : phone;
+      const user = await databaseService.verifyOtp(identifier, otp, authMethod === 'phone');
       onLogin(user);
     } catch (err: any) {
       setError(err.message || 'Invalid code.');
@@ -191,7 +211,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 className="text-center"
               >
                 <h1 className='text-4xl font-black text-white mb-2 uppercase tracking-tighter'>Verify Account</h1>
-                <p className='text-slate-400 text-sm mb-8'>Code sent to your terminal (email)</p>
+                <p className='text-slate-400 text-sm mb-8'>Code sent to your {authMethod === 'email' ? 'email' : 'mobile'} terminal</p>
                 <form onSubmit={handleVerify} className="space-y-6">
                   <motion.input
                     initial={{ scale: 0.9 }}
@@ -230,6 +250,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   <h1 className='text-4xl font-black text-white uppercase tracking-tighter'>
                     {step === AuthStep.LOGIN ? 'Sign In' : 'Sign Up'}
                   </h1>
+
+                  {/* Auth Method Toggle */}
+                  <div className="flex bg-slate-900/50 p-1 rounded-2xl mt-8 max-w-[200px] mx-auto border border-white/5">
+                    <button 
+                      onClick={() => setAuthMethod('email')}
+                      className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${authMethod === 'email' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}
+                    >
+                      Email
+                    </button>
+                    <button 
+                      onClick={() => setAuthMethod('phone')}
+                      className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${authMethod === 'phone' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500'}`}
+                    >
+                      Mobile
+                    </button>
+                  </div>
+
                   <div className="flex gap-3 justify-center mt-6">
                     {socialIcons.map((social, index) => (
                       <motion.button 
@@ -257,12 +294,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                       />
                     )}
                   </AnimatePresence>
-                  <AppInput 
-                    placeholder="EMAIL@DOMAIN.COM" 
-                    type="email" 
-                    value={email} 
-                    onChange={(e: any) => setEmail(e.target.value)} 
-                  />
+                  
+                  {authMethod === 'email' ? (
+                    <AppInput 
+                      placeholder="EMAIL@DOMAIN.COM" 
+                      type="email" 
+                      value={email} 
+                      onChange={(e: any) => setEmail(e.target.value)} 
+                    />
+                  ) : (
+                    <AppInput 
+                      placeholder="+91 9876543210" 
+                      type="tel" 
+                      value={phone} 
+                      onChange={(e: any) => setPhone(e.target.value)} 
+                    />
+                  )}
+
                   <AppInput 
                     placeholder="ACCESS KEY" 
                     type="password" 
@@ -291,7 +339,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                       }}
                       className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white"
                     >
-                      {step === AuthStep.LOGIN ? "Sign Up" : "Log In"}
+                      {step === AuthStep.LOGIN ? "Create Profile" : "Access Login"}
                     </button>
                   </div>
                 </form>
