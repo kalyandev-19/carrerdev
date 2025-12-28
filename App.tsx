@@ -38,7 +38,7 @@ const LoadingScreen = () => (
   </div>
 );
 
-const Home = ({ navigateTo, user, onEditResume }: { navigateTo: (page: Page) => void; user: User; onEditResume: (resumeId: string) => void }) => {
+const Home = ({ navigateTo, user, onEditResume, onDownloadResume }: { navigateTo: (page: Page) => void; user: User; onEditResume: (resumeId: string) => void; onDownloadResume: (resumeId: string) => void }) => {
   const [resumes, setResumes] = useState<ResumeData[]>([]);
   const [stats, setStats] = useState({ resumeComplete: 0 });
   const containerRef = useRef(null);
@@ -305,7 +305,7 @@ const Home = ({ navigateTo, user, onEditResume }: { navigateTo: (page: Page) => 
                                     className="p-3 bg-white/5 hover:bg-indigo-600 hover:text-white rounded-xl transition-all border border-white/5"
                                     title="Edit Module"
                                 >
-                                    <Icon name="qa" className="h-4 w-4" />
+                                    <Icon name="roadmap" className="h-4 w-4" />
                                 </button>
                                 <button 
                                     onClick={(e) => handleDeleteResume(res.id!, e)}
@@ -315,7 +315,7 @@ const Home = ({ navigateTo, user, onEditResume }: { navigateTo: (page: Page) => 
                                     <Icon name="sun" className="h-4 w-4 rotate-45" />
                                 </button>
                                 <button 
-                                    onClick={() => onEditResume(res.id!)} // Navigate to builder then print
+                                    onClick={() => onDownloadResume(res.id!)}
                                     className="btn-3d px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-emerald-600"
                                 >
                                     Download
@@ -335,23 +335,15 @@ const Home = ({ navigateTo, user, onEditResume }: { navigateTo: (page: Page) => 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null);
+  const [autoPrint, setAutoPrint] = useState(false);
   const [authView, setAuthView] = useState<AuthView>(AuthView.Login);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [initialized, setInitialized] = useState(false);
-  const [isKeySelected, setIsKeySelected] = useState<boolean | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
     const initApp = async () => {
       try {
-        const apiKey = process.env.API_KEY;
-        if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-          const hasKey = await window.aistudio.hasSelectedApiKey();
-          setIsKeySelected(!!apiKey || hasKey);
-        } else {
-          setIsKeySelected(!!apiKey);
-        }
-
         supabase.auth.onAuthStateChange(async (_event, session) => {
           if (session) {
             try {
@@ -375,10 +367,8 @@ const App: React.FC = () => {
             setAuthView(AuthView.Login);
           }
         });
-
       } catch (err) {
         console.error("App initialization error:", err);
-        setIsKeySelected(false);
       } finally {
         setTimeout(() => setInitialized(true), 800);
       }
@@ -389,12 +379,21 @@ const App: React.FC = () => {
   const navigateTo = useCallback((page: Page) => {
     setCurrentPage(page);
     setActiveResumeId(null);
+    setAutoPrint(false);
     setAuthView(AuthView.App);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const handleEditResume = (resumeId: string) => {
     setActiveResumeId(resumeId);
+    setAutoPrint(false);
+    setCurrentPage(Page.ResumeBuilder);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDownloadResume = (resumeId: string) => {
+    setActiveResumeId(resumeId);
+    setAutoPrint(true);
     setCurrentPage(Page.ResumeBuilder);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -408,19 +407,6 @@ const App: React.FC = () => {
 
   if (!initialized) return <LoadingScreen />;
 
-  if (isKeySelected === false) {
-    return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md glass-panel p-12 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/5">
-                <div className="bg-indigo-600 p-4 rounded-2xl shadow-xl w-fit mx-auto mb-8"><Icon name="logo" className="h-10 w-10 text-white" /></div>
-                <h2 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter leading-none">Authorization Required</h2>
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8 leading-relaxed">To access the Career AI core, link a valid API key.</p>
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={async () => { if (window.aistudio?.openSelectKey) { await window.aistudio.openSelectKey(); setIsKeySelected(true); } }} className="btn-3d w-full py-5 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl">Link API Key</motion.button>
-            </motion.div>
-        </div>
-    );
-  }
-
   if (!currentUser || authView === AuthView.Login) {
     return (
       <div className="dark min-h-screen bg-slate-950">
@@ -433,10 +419,10 @@ const App: React.FC = () => {
     switch (currentPage) {
       case Page.Chat: return <ChatBot user={currentUser} />;
       case Page.IndustryQA: return <IndustryQA />;
-      case Page.ResumeBuilder: return <ResumeBuilder user={currentUser} resumeId={activeResumeId || undefined} />;
+      case Page.ResumeBuilder: return <ResumeBuilder user={currentUser} resumeId={activeResumeId || undefined} autoPrint={autoPrint} />;
       case Page.ResumeAnalyzer: return <ResumeAnalyzer />;
       case Page.Home:
-      default: return <Home navigateTo={navigateTo} user={currentUser} onEditResume={handleEditResume} />;
+      default: return <Home navigateTo={navigateTo} user={currentUser} onEditResume={handleEditResume} onDownloadResume={handleDownloadResume} />;
     }
   };
 

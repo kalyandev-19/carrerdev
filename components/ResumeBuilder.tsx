@@ -12,9 +12,10 @@ import Icon from './common/Icon.tsx';
 interface ResumeBuilderProps {
   user: User;
   resumeId?: string;
+  autoPrint?: boolean;
 }
 
-const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
+const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId, autoPrint }) => {
     const [resume, setResume] = useState<ResumeData>({
         userId: user.id,
         title: 'New Resume Module',
@@ -72,11 +73,17 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
         const loadResume = async () => {
           if (resumeId) {
             const savedResume = await databaseService.getResume(resumeId);
-            if (savedResume) setResume(savedResume);
+            if (savedResume) {
+                setResume(savedResume);
+                if (autoPrint) {
+                    // Small delay to ensure content renders before print dialog
+                    setTimeout(handleExport, 1000);
+                }
+            }
           }
         };
         loadResume();
-    }, [resumeId, user.id]);
+    }, [resumeId, user.id, autoPrint]);
 
     useEffect(() => {
         const handleResize = () => {
