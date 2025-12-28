@@ -101,6 +101,19 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
     const handleChange = <T extends keyof ResumeData,>(field: T, value: ResumeData[T]) => {
         setResume(prev => ({ ...prev, [field]: value }));
         setSaveStatus('dirty');
+        
+        // Auto-save logic
+        const timeoutId = setTimeout(async () => {
+            try {
+                setSaveStatus('saving');
+                await databaseService.saveResume({ ...resume, [field]: value });
+                setSaveStatus('saved');
+            } catch (e) {
+                console.error("Auto-save failed", e);
+                setSaveStatus('dirty');
+            }
+        }, 1000);
+        return () => clearTimeout(timeoutId);
     };
 
     const handleNestedChange = <T extends 'education' | 'experience',>(section: T, index: number, field: string, value: string) => {
@@ -160,7 +173,13 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                     <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Resume Studio</h2>
                     <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">3D Precision Workspace</p>
                 </motion.div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <div className={`h-2 w-2 rounded-full ${saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {saveStatus === 'saved' ? 'Sync Verified' : saveStatus === 'saving' ? 'Syncing...' : 'Changes Pending'}
+                        </span>
+                    </div>
                     <Button onClick={handleExport} className="h-12 px-8 btn-3d bg-indigo-600 rounded-2xl flex items-center gap-3 active:scale-95">
                         <Icon name="resume" className="h-5 w-5" />
                         Export PDF
@@ -202,6 +221,35 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                         <Textarea rows={4} value={resume.summary} onChange={e => handleChange('summary', e.target.value)} />
                     </motion.section>
 
+                    {/* Education */}
+                    <motion.section 
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                        className="tilt-card glass-panel p-8 rounded-[40px] shadow-3d border-t-2 border-l-2 border-white/40 space-y-4"
+                    >
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Academic Background</h3>
+                            <button onClick={() => addEntry('education')} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-500 transition-colors">+ Add Credential</button>
+                        </div>
+                        <div className="space-y-6">
+                            {resume.education.map((edu, idx) => (
+                                <div key={edu.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft group/entry">
+                                    <button onClick={() => removeEntry('education', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 opacity-0 group-hover/entry:opacity-100 transition-all">
+                                        <Icon name="sun" className="h-4 w-4 rotate-45" />
+                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <Input label="INSTITUTION" value={edu.school} onChange={e => handleNestedChange('education', idx, 'school', e.target.value)} />
+                                        <Input label="DEGREE / MAJOR" value={edu.degree} onChange={e => handleNestedChange('education', idx, 'degree', e.target.value)} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <Input label="START DATE" value={edu.startDate} onChange={e => handleNestedChange('education', idx, 'startDate', e.target.value)} placeholder="MM/YYYY" />
+                                            <Input label="END DATE" value={edu.endDate} onChange={e => handleNestedChange('education', idx, 'endDate', e.target.value)} placeholder="MM/YYYY" />
+                                        </div>
+                                        <Input label="GPA" value={edu.gpa} onChange={e => handleNestedChange('education', idx, 'gpa', e.target.value)} placeholder="E.G. 3.9/4.0" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.section>
+
                     {/* Experience */}
                     <motion.section 
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
@@ -209,15 +257,21 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                     >
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6">
                             <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Experience Blocks</h3>
-                            <button onClick={() => addEntry('experience')} className="text-[10px] font-black uppercase tracking-widest text-indigo-600">+ Add Block</button>
+                            <button onClick={() => addEntry('experience')} className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-500 transition-colors">+ Add Block</button>
                         </div>
                         <div className="space-y-6">
                             {resume.experience.map((exp, idx) => (
-                                <div key={exp.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft">
-                                    <button onClick={() => removeEntry('experience', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500"><Icon name="sun" className="h-4 w-4 rotate-45" /></button>
-                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div key={exp.id} className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-700 relative shadow-inner-soft group/entry">
+                                    <button onClick={() => removeEntry('experience', idx)} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 opacity-0 group-hover/entry:opacity-100 transition-all">
+                                        <Icon name="sun" className="h-4 w-4 rotate-45" />
+                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                         <Input label="COMPANY" value={exp.company} onChange={e => handleNestedChange('experience', idx, 'company', e.target.value)} />
                                         <Input label="ROLE" value={exp.role} onChange={e => handleNestedChange('experience', idx, 'role', e.target.value)} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <Input label="START DATE" value={exp.startDate} onChange={e => handleNestedChange('experience', idx, 'startDate', e.target.value)} />
+                                            <Input label="END DATE" value={exp.endDate} onChange={e => handleNestedChange('experience', idx, 'endDate', e.target.value)} />
+                                        </div>
                                     </div>
                                     <Textarea rows={3} label="RESPONSIBILITIES" value={exp.responsibilities} onChange={e => handleNestedChange('experience', idx, 'responsibilities', e.target.value)} />
                                 </div>
@@ -249,35 +303,68 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user }) => {
                             >
                                 <header className="text-center mb-10">
                                     <h1 className="text-5xl font-black text-slate-950 tracking-tighter uppercase mb-4">{resume.fullName || 'YOUR IDENTITY'}</h1>
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.3em]">{resume.email} {resume.phone ? `| ${resume.phone}` : ''}</p>
-                                    {resume.linkedin && <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest mt-2">{resume.linkedin}</p>}
+                                    <div className="flex flex-wrap justify-center gap-4 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+                                        <span>{resume.email}</span>
+                                        {resume.phone && <span>| {resume.phone}</span>}
+                                        {resume.linkedin && <span className="text-indigo-600">{resume.linkedin}</span>}
+                                    </div>
                                 </header>
-                                <div className="space-y-8">
+                                <div className="space-y-10">
                                     {resume.summary && (
                                         <section>
-                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">Summary</h2>
+                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Summary</h2>
                                             <p className="text-sm font-medium text-slate-700 leading-relaxed whitespace-pre-wrap">{resume.summary}</p>
                                         </section>
                                     )}
-                                    {resume.experience.length > 0 && (
+
+                                    {resume.education.length > 0 && (
                                         <section>
-                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">Experience</h2>
-                                            {resume.experience.map(exp => (
-                                                <div key={exp.id} className="mb-6">
-                                                    <div className="flex justify-between items-baseline">
-                                                        <h4 className="font-bold text-slate-900">{exp.role}</h4>
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{exp.startDate} - {exp.endDate || 'Present'}</span>
+                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Education</h2>
+                                            <div className="space-y-6">
+                                                {resume.education.map(edu => (
+                                                    <div key={edu.id}>
+                                                        <div className="flex justify-between items-baseline mb-1">
+                                                            <h4 className="font-black text-slate-950 text-base">{edu.school}</h4>
+                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{edu.startDate} - {edu.endDate || 'Present'}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-baseline">
+                                                            <p className="text-sm font-bold text-indigo-600 uppercase tracking-tight">{edu.degree}</p>
+                                                            {edu.gpa && <span className="text-xs font-bold text-slate-500 italic">GPA: {edu.gpa}</span>}
+                                                        </div>
                                                     </div>
-                                                    <p className="text-[12px] font-black text-indigo-600 uppercase tracking-tighter mb-2">{exp.company}</p>
-                                                    <p className="text-[13px] text-slate-600 mt-1 whitespace-pre-wrap leading-relaxed">{exp.responsibilities}</p>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </section>
                                     )}
+
+                                    {resume.experience.length > 0 && (
+                                        <section>
+                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Experience</h2>
+                                            <div className="space-y-8">
+                                                {resume.experience.map(exp => (
+                                                    <div key={exp.id}>
+                                                        <div className="flex justify-between items-baseline mb-1">
+                                                            <h4 className="font-black text-slate-950 text-base">{exp.role}</h4>
+                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{exp.startDate} - {exp.endDate || 'Present'}</span>
+                                                        </div>
+                                                        <p className="text-xs font-black text-indigo-600 uppercase tracking-tighter mb-3">{exp.company}</p>
+                                                        <p className="text-[13px] text-slate-600 whitespace-pre-wrap leading-relaxed border-l-2 border-slate-50 pl-4">{exp.responsibilities}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )}
+
                                     {resume.skills && (
                                         <section>
-                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">Skills & Tech</h2>
-                                            <p className="text-[13px] font-medium text-slate-700">{resume.skills}</p>
+                                            <h2 className="text-xs font-black text-indigo-700 uppercase tracking-[0.3em] border-b-2 border-slate-100 pb-2 mb-4">Technical Stack</h2>
+                                            <div className="flex flex-wrap gap-2">
+                                                {resume.skills.split(',').map((skill, i) => (
+                                                    <span key={i} className="text-[11px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 px-3 py-1 rounded-md border border-slate-100">
+                                                        {skill.trim()}
+                                                    </span>
+                                                ))}
+                                            </div>
                                         </section>
                                     )}
                                 </div>

@@ -10,6 +10,7 @@ interface Message {
   role: 'user' | 'model';
   text: string;
   isStreaming?: boolean;
+  isError?: boolean;
 }
 
 interface ChatBotProps {
@@ -100,15 +101,28 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
     if (visualizerRequestRef.current) cancelAnimationFrame(visualizerRequestRef.current);
   }, []);
 
+  const handleKeyError = async () => {
+    // @ts-ignore
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      // @ts-ignore
+      await window.aistudio.openSelectKey();
+    }
+  };
+
   const startVoiceMode = async () => {
     try {
+      const apiKey = process.env.API_KEY;
+      if (!apiKey) {
+        await handleKeyError();
+        return;
+      }
+
       setIsVoiceMode(true);
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const ai = new GoogleGenAI({ apiKey });
       
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       
-      // Resume context (fix for browser autoplay policies)
       if (inputCtx.state === 'suspended') await inputCtx.resume();
       if (outputCtx.state === 'suspended') await outputCtx.resume();
 
@@ -156,7 +170,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
               source.start();
             }
           },
-          onerror: (err) => console.error("Live AI Error:", err),
+          onerror: (err: any) => {
+            console.error("Live AI Error:", err);
+            if (err?.message?.includes("API key")) handleKeyError();
+          },
           onclose: stopVoiceMode,
         },
         config: { 
@@ -191,12 +208,24 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   const sendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading) return;
+    
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      setMessages(prev => [...prev, { 
+        role: 'model', 
+        text: "Error: API Authentication is missing. Please initialize the environment by selecting an API key.", 
+        isError: true 
+      }]);
+      await handleKeyError();
+      return;
+    }
+
     const txt = input;
     setMessages(prev => [...prev, { role: 'user', text: txt }]);
     setInput('');
     setIsLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const ai = new GoogleGenAI({ apiKey });
       const chat = ai.chats.create({ 
           model: 'gemini-3-pro-preview',
           config: {
@@ -221,9 +250,11 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
           if (last) last.isStreaming = false;
           return next;
         });
-    } catch (e) { 
-        console.error(e);
-        setIsLoading(false); 
+    } catch (error: any) { 
+        console.error(error);
+        const errorMsg = error?.message || "Communication link failure.";
+        setMessages(prev => [...prev, { role: 'model', text: errorMsg, isError: true }]);
+        if (errorMsg.includes("API Key") || errorMsg.includes("entity was not found")) handleKeyError();
     } finally { 
         setIsLoading(false); 
     }
@@ -284,7 +315,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[85%] px-8 py-6 rounded-[35px] shadow-3d border-t-2 border-l-2 ${msg.role === 'user' ? 'bg-indigo-600 text-white border-white/10' : 'glass-panel text-slate-900 dark:text-white border-white/20'}`}>
+                  <div className={`max-w-[85%] px-8 py-6 rounded-[35px] shadow-3d border-t-2 border-l-2 ${
+                    msg.role === 'user' 
+                      ? 'bg-indigo-600 text-white border-white/10' 
+                      : msg.isError 
+                        ? 'bg-rose-950/20 text-rose-500 border-rose-500/30'
+                        : 'glass-panel text-slate-900 dark:text-white border-white/20'
+                    }`}>
                     <p className="text-sm font-bold leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                     {msg.isStreaming && <span className="inline-block w-1.5 h-4 ml-1.5 bg-indigo-500 animate-pulse rounded-full align-middle" />}
                   </div>

@@ -6,22 +6,45 @@ const handleAIError = (error: any) => {
   console.error("Gemini API Error:", error);
   const message = error?.message || "";
   
-  // If the key is invalid or project not found, trigger the key selection dialog
-  if (message.includes("Requested entity was not found") || message.includes("API key not valid")) {
+  // Specific check for missing key in browser or invalid key errors
+  const isAuthError = 
+    message.includes("An API Key must be set") || 
+    message.includes("Requested entity was not found") || 
+    message.includes("API key not valid") ||
+    message.includes("API_KEY_INVALID");
+
+  if (isAuthError) {
     // @ts-ignore
     if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
       // @ts-ignore
       window.aistudio.openSelectKey();
     }
-    throw new Error("API Authentication failed. Please ensure you have selected a valid API key from a paid Google Cloud project.");
+    throw new Error("API Authentication failed. Please select a valid API key from a paid Google Cloud project to continue.");
   }
 
   throw error;
 };
 
+/**
+ * Helper to ensure we always have a fresh instance with the latest injected API key
+ */
+const getAI = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    // Force open the key selector if we reach this state without a key
+    // @ts-ignore
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      // @ts-ignore
+      window.aistudio.openSelectKey();
+    }
+    throw new Error("API Key is missing. Please select a key in the authorization dialog.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
 export const askIndustryExpertStream = async function* (field: string, question: string) {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = getAI();
     const responseStream = await ai.models.generateContentStream({
       model: 'gemini-3-flash-preview',
       contents: [{
@@ -46,7 +69,7 @@ export const askIndustryExpertStream = async function* (field: string, question:
 
 export const generateResumeSectionStream = async function* (prompt: string) {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = getAI();
         const responseStream = await ai.models.generateContentStream({
             model: 'gemini-3-flash-preview',
             contents: [{
@@ -88,7 +111,7 @@ export const analyzeResumeStream = async function* (content: string | { data: st
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = getAI();
     const responseStream = await ai.models.generateContentStream({
       model: 'gemini-3-flash-preview',
       contents: [{ parts }],
