@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import Header from './components/Header.tsx';
@@ -6,6 +7,7 @@ import IndustryQA from './components/IndustryQA.tsx';
 import ResumeBuilder from './components/ResumeBuilder.tsx';
 import ResumeAnalyzer from './components/ResumeAnalyzer.tsx';
 import ChatBot from './components/ChatBot.tsx';
+import Opportunities from './components/Opportunities.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import Card from './components/common/Card.tsx';
 import Icon from './components/common/Icon.tsx';
@@ -45,7 +47,7 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
   const roadmapData = [
     { id: "1", title: "Build Resume", description: "Create a professional, high-impact resume.", icon: <Icon name="resume" className="h-5 w-5" /> },
     { id: "2", title: "Review Resume", description: "Get instant AI feedback on your documents.", icon: <Icon name="analyzer" className="h-5 w-5" /> },
-    { id: "3", title: "Market Trends", description: "Learn about the latest industry hiring trends.", icon: <Icon name="qa" className="h-5 w-5" /> },
+    { id: "3", title: "Job Search", description: "Find real-time internships and jobs.", icon: <Icon name="send" className="h-5 w-5" /> },
     { id: "4", title: "Interview Prep", description: "Practice with our voice-enabled AI bot.", icon: <Icon name="logo" className="h-5 w-5" /> },
   ];
 
@@ -123,7 +125,7 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
               <Card title="Career Chat" description="Chat with your personal AI career advisor." icon={<Icon name="chat" />} onClick={() => navigateTo(Page.Chat)} glowColor="blue" />
-              <Card title="Market Insights" description="Get real-time job market and hiring trends." icon={<Icon name="qa" />} onClick={() => navigateTo(Page.IndustryQA)} glowColor="red" />
+              <Card title="Job Board" description="Find live internships and job openings." icon={<Icon name="send" />} onClick={() => navigateTo(Page.Opportunities)} glowColor="red" />
             </div>
           </div>
 
@@ -200,6 +202,7 @@ const Workspace: React.FC<{ user: User; onLogout: () => void }> = ({ user, onLog
               {currentPage === Page.ResumeBuilder && <ResumeBuilder user={user} resumeId={editingResumeId} />}
               {currentPage === Page.ResumeAnalyzer && <ResumeAnalyzer userId={user.id} />}
               {currentPage === Page.Chat && <ChatBot user={user} />}
+              {currentPage === Page.Opportunities && <Opportunities />}
             </motion.div>
           </AnimatePresence>
         </div>

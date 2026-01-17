@@ -35,7 +35,6 @@ export const databaseService = {
   getResumes: async (userId: string): Promise<ResumeData[]> => {
     if (!userId) return [];
 
-    // Select all columns (*) but handle the absence of 'title' in mapping
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
@@ -50,7 +49,7 @@ export const databaseService = {
     return (data || []).map(item => ({
         id: item.id,
         userId: item.user_id,
-        title: item.title || item.full_name || 'Professional Resume',
+        title: item.title || 'Untitled Resume',
         fullName: item.full_name,
         email: item.email,
         phone: item.phone,
@@ -78,7 +77,7 @@ export const databaseService = {
     return {
         id: data.id,
         userId: data.user_id,
-        title: data.title || data.full_name || 'Resume',
+        title: data.title || 'Untitled Resume',
         fullName: data.full_name,
         email: data.email,
         phone: data.phone,
@@ -95,6 +94,7 @@ export const databaseService = {
   saveResume: async (resume: ResumeData): Promise<ResumeData> => {
     const payload: any = {
       user_id: resume.userId,
+      title: resume.title || 'Untitled Resume',
       full_name: resume.fullName,
       email: resume.email,
       phone: resume.phone,
@@ -106,11 +106,7 @@ export const databaseService = {
       skills: resume.skills,
     };
 
-    // Only include title if it's explicitly provided to avoid column errors 
-    // if the table was created without it.
-    if (resume.title) payload.title = resume.title;
-
-    if (resume.id && resume.id.length > 20) {
+    if (resume.id) {
       payload.id = resume.id;
     }
 
@@ -125,7 +121,7 @@ export const databaseService = {
     return {
         id: data.id,
         userId: data.user_id,
-        title: data.title || data.full_name || 'Resume',
+        title: data.title,
         fullName: data.full_name,
         email: data.email,
         phone: data.phone,

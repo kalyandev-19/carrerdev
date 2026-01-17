@@ -48,34 +48,34 @@ const Opportunities: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         className="mb-12 text-center"
       >
-        <h2 className="text-4xl font-black text-white uppercase tracking-tighter mb-4">Neural Opportunity Finder</h2>
-        <p className="text-slate-500 font-black uppercase tracking-[0.3em] text-xs">Real-time Job & Internship Intelligence</p>
+        <h2 className="text-4xl font-black text-white uppercase tracking-tighter mb-4">Find Internships & Jobs</h2>
+        <p className="text-slate-500 font-black uppercase tracking-[0.3em] text-xs">Search real-time opportunities globally</p>
       </motion.div>
 
       <div className="glass-panel p-8 rounded-[40px] border border-white/10 shadow-3d mb-12">
         <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
           <div className="md:col-span-2 space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Role / Skills</label>
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Job Title or Skills</label>
             <input 
               type="text" 
               value={query} 
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. Frontend Engineer, Product Design" 
+              placeholder="e.g. Software Intern, Graphic Designer" 
               className="w-full px-6 py-4 bg-slate-900/50 border-2 border-slate-800 rounded-2xl text-white font-bold outline-none focus:border-indigo-500 transition-all"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">Location</label>
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2">City or Remote</label>
             <input 
               type="text" 
               value={location} 
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. San Francisco, Remote" 
+              placeholder="e.g. New York, Remote" 
               className="w-full px-6 py-4 bg-slate-900/50 border-2 border-slate-800 rounded-2xl text-white font-bold outline-none focus:border-indigo-500 transition-all"
             />
           </div>
           <Button isLoading={isLoading} className="h-[60px] rounded-2xl">
-            Execute Search
+            Search Now
           </Button>
         </form>
 
@@ -108,7 +108,7 @@ const Opportunities: React.FC = () => {
                 <Spinner />
               </div>
             </div>
-            <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-xs animate-pulse">Syncing with Global Job Networks...</p>
+            <p className="text-slate-400 font-black uppercase tracking-[0.4em] text-xs animate-pulse">Scanning live job boards...</p>
           </motion.div>
         ) : results ? (
           <motion.div 
@@ -121,7 +121,7 @@ const Opportunities: React.FC = () => {
                 <div className="p-3 bg-indigo-600/20 rounded-2xl text-indigo-400">
                   <Icon name="logo" className="h-6 w-6" />
                 </div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Listing Analysis</h3>
+                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">AI Search Results</h3>
               </div>
               <div className="prose prose-invert max-w-none text-slate-300 font-medium leading-relaxed">
                 <div dangerouslySetInnerHTML={{ __html: results.text.replace(/\n/g, '<br />') }} />
@@ -129,7 +129,7 @@ const Opportunities: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 px-4">Direct Portals Found</h4>
+              <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 px-4">Available Links</h4>
               {results.sources.map((source, i) => (
                 <motion.a
                   key={i}
@@ -154,7 +154,7 @@ const Opportunities: React.FC = () => {
               ))}
               {results.sources.length === 0 && (
                 <div className="text-center py-10 opacity-50 italic text-slate-500">
-                  No verified direct links found for this specific search.
+                  No verified direct links found for this search.
                 </div>
               )}
             </div>
@@ -162,7 +162,7 @@ const Opportunities: React.FC = () => {
         ) : (
           <div className="text-center py-20 opacity-30">
             <Icon name="roadmap" className="h-20 w-20 mx-auto text-slate-600 mb-6" />
-            <p className="font-black uppercase tracking-[0.5em] text-slate-600">Enter a query to begin scanning</p>
+            <p className="font-black uppercase tracking-[0.5em] text-slate-600">Enter a query to start searching</p>
           </div>
         )}
       </AnimatePresence>

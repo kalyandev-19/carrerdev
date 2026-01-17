@@ -5,6 +5,7 @@ export enum Page {
   ResumeBuilder = 'builder',
   ResumeAnalyzer = 'analyzer',
   Chat = 'chat',
+  Opportunities = 'opportunities'
 }
 
 export interface User {
