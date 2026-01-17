@@ -207,7 +207,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                 <div>
                   <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter">Resume Studio</h2>
                   <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">
-                    Cloud Sync: {lastSaved || 'Offline'}
+                    Sync Status: {lastSaved ? `Last saved at ${lastSaved}` : 'Not saved yet'}
                   </p>
                   {saveError && (
                     <p className="text-[8px] font-black uppercase text-rose-500 mt-1 tracking-widest">Error: {saveError}</p>
@@ -215,12 +215,12 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                 </div>
                 <div className="flex gap-3 md:gap-4">
                     <button onClick={handleManualSave} disabled={isSaving} className="btn-3d flex-1 md:flex-none px-4 md:px-6 py-2.5 md:py-3 bg-slate-800 rounded-xl text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap shadow-xl">
-                        Save Work
+                        Save Changes
                     </button>
                     <Button onClick={handleExport} isLoading={isSaving} className="flex-1 md:flex-none px-6 md:px-8 py-2.5 md:py-3 bg-indigo-600 rounded-xl shadow-xl">
                         <div className="flex items-center justify-center gap-2">
                             <Icon name="download" className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                            <span className="text-[10px] md:text-xs">Export PDF</span>
+                            <span className="text-[10px] md:text-xs">Download PDF</span>
                         </div>
                     </Button>
                 </div>
@@ -230,35 +230,35 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                 <div className="space-y-6 md:space-y-8 md:h-[calc(100vh-16rem)] md:overflow-y-auto md:pr-4 custom-scrollbar">
                     {/* Basic Info Module */}
                     <div className="glass-panel p-6 md:p-8 rounded-[30px] md:rounded-[40px] space-y-5 md:space-y-6 border border-white/5">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-indigo-400">Core Identity</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-indigo-400">Personal Details</h3>
                         <Input label="FULL NAME" value={resume.fullName} onChange={e => handleChange('fullName', e.target.value)} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <Input label="EMAIL" value={resume.email} onChange={e => handleChange('email', e.target.value)} />
-                          <Input label="PHONE" value={resume.phone} onChange={e => handleChange('phone', e.target.value)} />
+                          <Input label="EMAIL ADDRESS" value={resume.email} onChange={e => handleChange('email', e.target.value)} />
+                          <Input label="PHONE NUMBER" value={resume.phone} onChange={e => handleChange('phone', e.target.value)} />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <Input label="LINKEDIN" placeholder="linkedin.com/in/username" value={resume.linkedin} onChange={e => handleChange('linkedin', e.target.value)} />
-                          <Input label="GITHUB" placeholder="github.com/username" value={resume.github} onChange={e => handleChange('github', e.target.value)} />
+                          <Input label="LINKEDIN URL" placeholder="linkedin.com/in/username" value={resume.linkedin} onChange={e => handleChange('linkedin', e.target.value)} />
+                          <Input label="GITHUB URL" placeholder="github.com/username" value={resume.github} onChange={e => handleChange('github', e.target.value)} />
                         </div>
                         <div className="relative">
-                          <Textarea label="SUMMARY" rows={4} value={resume.summary} onChange={e => handleChange('summary', e.target.value)} />
+                          <Textarea label="PROFESSIONAL SUMMARY" rows={4} value={resume.summary} onChange={e => handleChange('summary', e.target.value)} />
                           <button onClick={() => handleGenerateAI('summary')} disabled={loadingSection === 'summary'} className="absolute top-9 right-3 p-1.5 md:p-2 bg-indigo-600/20 text-indigo-400 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-lg backdrop-blur-sm">
                             {loadingSection === 'summary' ? <Icon name="logo" className="animate-spin h-3.5 w-3.5 md:h-4 md:w-4" /> : <Icon name="sparkles" className="h-3.5 w-3.5 md:h-4 md:w-4" />}
                           </button>
                         </div>
-                        <Textarea label="EXPERTISE & SKILLS" rows={2} placeholder="e.g. React, Python, Data Analysis..." value={resume.skills} onChange={e => handleChange('skills', e.target.value)} />
+                        <Textarea label="SKILLS & SPECIALIZATIONS" rows={2} placeholder="e.g. React, Python, Project Management..." value={resume.skills} onChange={e => handleChange('skills', e.target.value)} />
                     </div>
 
                     {/* Experience Modules */}
                     <div className="glass-panel p-6 md:p-8 rounded-[30px] md:rounded-[40px] space-y-5 md:space-y-6 border border-white/5">
                         <div className="flex justify-between items-center">
-                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-indigo-400">Professional Journey</h3>
+                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-indigo-400">Experience</h3>
                           <button 
                             onClick={() => handleChange('experience', [...resume.experience, { id: Date.now().toString(), company: '', role: '', startDate: '', endDate: '', responsibilities: '' }])}
                             className="p-1.5 md:p-2 bg-indigo-600/10 text-indigo-400 rounded-lg hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 md:gap-2 shadow-inner-soft"
                           >
                             <Icon name="plus" className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                            <span className="text-[9px] md:text-[10px] font-black uppercase">Add Role</span>
+                            <span className="text-[9px] md:text-[10px] font-black uppercase">Add Work</span>
                           </button>
                         </div>
                         {resume.experience.map((exp, idx) => (
@@ -286,7 +286,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                               }} />
                             </div>
                             <div className="relative">
-                              <Textarea placeholder="Key Responsibilities & Achievements..." rows={4} value={exp.responsibilities} onChange={e => {
+                              <Textarea placeholder="Key Responsibilities..." rows={4} value={exp.responsibilities} onChange={e => {
                                   const next = [...resume.experience];
                                   next[idx].responsibilities = e.target.value;
                                   handleChange('experience', next);
@@ -295,7 +295,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                                 {loadingSection === `exp-${idx}` ? <Icon name="logo" className="animate-spin h-3.5 w-3.5 md:h-4 md:w-4" /> : <Icon name="sparkles" className="h-3.5 w-3.5 md:h-4 md:w-4" />}
                               </button>
                             </div>
-                            <button onClick={() => handleChange('experience', resume.experience.filter(e => e.id !== exp.id))} className="text-[8px] md:text-[9px] font-black uppercase text-rose-500 hover:text-rose-400 transition-colors">Remove Entry</button>
+                            <button onClick={() => handleChange('experience', resume.experience.filter(e => e.id !== exp.id))} className="text-[8px] md:text-[9px] font-black uppercase text-rose-500 hover:text-rose-400 transition-colors">Remove Section</button>
                           </div>
                         ))}
                     </div>
@@ -303,13 +303,13 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                     {/* Education Modules */}
                     <div className="glass-panel p-6 md:p-8 rounded-[30px] md:rounded-[40px] space-y-5 md:space-y-6 border border-white/5">
                         <div className="flex justify-between items-center">
-                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-indigo-400">Academic Background</h3>
+                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-indigo-400">Education</h3>
                           <button 
                             onClick={() => handleChange('education', [...resume.education, { id: Date.now().toString(), school: '', degree: '', startDate: '', endDate: '', gpa: '' }])}
                             className="p-1.5 md:p-2 bg-indigo-600/10 text-indigo-400 rounded-lg hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 md:gap-2 shadow-inner-soft"
                           >
                             <Icon name="plus" className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                            <span className="text-[9px] md:text-[10px] font-black uppercase">Add Degree</span>
+                            <span className="text-[9px] md:text-[10px] font-black uppercase">Add School</span>
                           </button>
                         </div>
                         {resume.education.map((edu, idx) => (
@@ -319,7 +319,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                                 next[idx].school = e.target.value;
                                 handleChange('education', next);
                             }} />
-                            <Input placeholder="Degree Type (e.g. B.S. Computer Science)" value={edu.degree} onChange={e => {
+                            <Input placeholder="Degree (e.g. Bachelor's in CS)" value={edu.degree} onChange={e => {
                                 const next = [...resume.education];
                                 next[idx].degree = e.target.value;
                                 handleChange('education', next);
@@ -341,7 +341,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                                   handleChange('education', next);
                               }} />
                             </div>
-                            <button onClick={() => handleChange('education', resume.education.filter(e => e.id !== edu.id))} className="text-[8px] md:text-[9px] font-black uppercase text-rose-500 hover:text-rose-400 transition-colors">Remove Entry</button>
+                            <button onClick={() => handleChange('education', resume.education.filter(e => e.id !== edu.id))} className="text-[8px] md:text-[9px] font-black uppercase text-rose-500 hover:text-rose-400 transition-colors">Remove Section</button>
                           </div>
                         ))}
                     </div>

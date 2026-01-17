@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import Header from './components/Header.tsx';
@@ -29,10 +28,10 @@ const LoadingScreen = () => (
         <Icon name="logo" className="h-12 w-12 text-white" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-black text-white tracking-tight uppercase">CareerDev Sync</h2>
+        <h2 className="text-xl font-black text-white tracking-tight uppercase">CareerDev AI</h2>
         <div className="flex items-center gap-2 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">
           <Spinner /> 
-          <span>Initializing Workspace...</span>
+          <span>Syncing your workspace...</span>
         </div>
       </div>
     </motion.div>
@@ -44,10 +43,10 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
   const containerRef = useRef(null);
   
   const roadmapData = [
-    { id: "1", title: "Core Resume", description: "Build your high-impact professional identity.", icon: <Icon name="resume" className="h-5 w-5" /> },
-    { id: "2", title: "AI Audit", description: "Perform deep analysis on your documents.", icon: <Icon name="analyzer" className="h-5 w-5" /> },
-    { id: "3", title: "Industry Insights", description: "Stay updated with real-time market trends.", icon: <Icon name="qa" className="h-5 w-5" /> },
-    { id: "4", title: "Career Agent", description: "Finalize your strategy with voice-enabled AI.", icon: <Icon name="logo" className="h-5 w-5" /> },
+    { id: "1", title: "Build Resume", description: "Create a professional, high-impact resume.", icon: <Icon name="resume" className="h-5 w-5" /> },
+    { id: "2", title: "Review Resume", description: "Get instant AI feedback on your documents.", icon: <Icon name="analyzer" className="h-5 w-5" /> },
+    { id: "3", title: "Market Trends", description: "Learn about the latest industry hiring trends.", icon: <Icon name="qa" className="h-5 w-5" /> },
+    { id: "4", title: "Interview Prep", description: "Practice with our voice-enabled AI bot.", icon: <Icon name="logo" className="h-5 w-5" /> },
   ];
 
   const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start start", "end start"] });
@@ -88,19 +87,19 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
               className="max-w-4xl mx-auto text-center space-y-6 md:space-y-8 glass-panel !bg-black/40 p-6 md:p-12 rounded-[40px] md:rounded-[60px] border-white/10"
             >
               <div className="inline-flex items-center gap-2 px-4 md:px-6 py-1.5 md:py-2 bg-indigo-600/30 rounded-full border border-indigo-500/30 text-indigo-300 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em]">
-                 Career Intelligence v3.5
+                 Professional AI v3.5
               </div>
               <h2 className="text-white text-3xl md:text-7xl font-black tracking-tighter leading-tight md:leading-none">
                 AI Powered Career <br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Dashboard.</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Assistant.</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mt-6 md:mt-8">
                 <div className="text-center md:text-left space-y-4 md:space-y-6">
                   <p className="text-white/80 text-sm md:text-lg font-medium leading-relaxed">
-                    Elevate your professional trajectory with expert tools and neural guidance.
+                    Build your future with expert resume tools and smart industry insights.
                   </p>
                   <button onClick={() => navigateTo(Page.ResumeBuilder)} className="btn-3d w-full md:w-auto px-8 py-3.5 md:px-10 md:py-4 rounded-2xl text-white font-black uppercase tracking-widest text-[10px] md:text-xs">
-                    Get Started
+                    Start Building
                   </button>
                 </div>
                 <div className="hidden md:block relative z-10">
@@ -118,13 +117,13 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
                 <Icon name="chat" className="h-5 w-5 md:h-6 text-indigo-400" />
               </div>
               <div>
-                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">AI Career Strategy</h2>
-                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">Insights & Consulting</p>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">Career Assistance</h2>
+                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">AI Chat & Market Insights</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-              <Card title="AI Career Chat" description="Consult with your personal career assistant." icon={<Icon name="chat" />} onClick={() => navigateTo(Page.Chat)} glowColor="blue" />
-              <Card title="Industry Insights" description="Stay updated with real-time market trends." icon={<Icon name="qa" />} onClick={() => navigateTo(Page.IndustryQA)} glowColor="red" />
+              <Card title="Career Chat" description="Chat with your personal AI career advisor." icon={<Icon name="chat" />} onClick={() => navigateTo(Page.Chat)} glowColor="blue" />
+              <Card title="Market Insights" description="Get real-time job market and hiring trends." icon={<Icon name="qa" />} onClick={() => navigateTo(Page.IndustryQA)} glowColor="red" />
             </div>
           </div>
 
@@ -134,20 +133,20 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
                 <Icon name="resume" className="h-5 w-5 md:h-6 text-emerald-400" />
               </div>
               <div>
-                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">Professional Workspace</h2>
-                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">Document Management</p>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">My Documents</h2>
+                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">Resume Builder & Analysis</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
-              <Card title="Resume Builder" description="Engineer high-impact documents." icon={<Icon name="resume" />} onClick={() => navigateTo(Page.ResumeBuilder)} glowColor="purple" />
-              <Card title="AI Analysis" description="Diagnostic audit of your professional files." icon={<Icon name="analyzer" />} onClick={() => navigateTo(Page.ResumeAnalyzer)} glowColor="green" />
+              <Card title="Resume Builder" description="Create and edit professional resumes." icon={<Icon name="resume" />} onClick={() => navigateTo(Page.ResumeBuilder)} glowColor="purple" />
+              <Card title="Resume Feedback" description="Get instant AI feedback on your resume." icon={<Icon name="analyzer" />} onClick={() => navigateTo(Page.ResumeAnalyzer)} glowColor="green" />
             </div>
 
             <div className="mb-8 md:mb-10">
-              <h3 className="text-[9px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 mb-4 md:mb-6 px-2">My Saved Resumes</h3>
+              <h3 className="text-[9px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 mb-4 md:mb-6 px-2">Saved Resumes</h3>
               <div className="space-y-3 max-h-[250px] overflow-y-auto custom-scrollbar px-2">
                 {resumes.length === 0 ? (
-                  <p className="text-[10px] text-slate-600 uppercase font-black tracking-widest italic py-4">No documents synchronized yet.</p>
+                  <p className="text-[10px] text-slate-600 uppercase font-black tracking-widest italic py-4">No resumes saved yet.</p>
                 ) : (
                   resumes.map((res) => (
                     <div key={res.id} className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
@@ -155,7 +154,7 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
                         <Icon name="resume" className="h-4 w-4 md:h-5 md:w-5 text-indigo-400 shrink-0" />
                         <div className="min-w-0">
                           <h5 className="text-xs md:text-sm font-bold text-white uppercase truncate">{res.title}</h5>
-                          <p className="text-[7px] md:text-[8px] font-black text-slate-500 uppercase">{new Date(res.updatedAt || '').toLocaleDateString()}</p>
+                          <p className="text-[7px] md:text-[8px] font-black text-slate-500 uppercase">Updated: {new Date(res.updatedAt || '').toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="flex gap-1.5 md:gap-2 shrink-0">

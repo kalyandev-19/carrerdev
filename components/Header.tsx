@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Icon from './common/Icon.tsx';
@@ -46,15 +45,15 @@ const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout
             </div>
             <div className="ml-2 md:ml-3 flex flex-col justify-center">
               <span className="text-sm md:text-xl font-black text-white tracking-tighter leading-none">CareerDev</span>
-              <span className="text-[7px] md:text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mt-1">AI Powered</span>
+              <span className="text-[7px] md:text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none mt-1">AI Assistant</span>
             </div>
           </div>
           
           <div className="hidden lg:flex items-center space-x-1 md:space-x-2">
-            <NavLink page={Page.Home} currentPage={currentPage} navigateTo={navigateTo}>Dashboard</NavLink>
-            <NavLink page={Page.ResumeBuilder} currentPage={currentPage} navigateTo={navigateTo}>Editor</NavLink>
+            <NavLink page={Page.Home} currentPage={currentPage} navigateTo={navigateTo}>Home</NavLink>
+            <NavLink page={Page.ResumeBuilder} currentPage={currentPage} navigateTo={navigateTo}>Resume Builder</NavLink>
             <NavLink page={Page.Chat} currentPage={currentPage} navigateTo={navigateTo}>AI Agent</NavLink>
-            <NavLink page={Page.IndustryQA} currentPage={currentPage} navigateTo={navigateTo}>Insights</NavLink>
+            <NavLink page={Page.IndustryQA} currentPage={currentPage} navigateTo={navigateTo}>Market Insights</NavLink>
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 relative">
@@ -67,15 +66,15 @@ const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout
             >
               <div className="hidden sm:flex flex-col items-end">
                 <span className="text-[10px] md:text-xs font-black text-white leading-tight truncate max-w-[100px] md:max-w-[120px] uppercase tracking-tighter">
-                  {user?.fullName || 'Active Professional'}
+                  {user?.fullName || 'Guest User'}
                 </span>
                 <span className="text-[7px] md:text-[9px] text-emerald-400 font-black uppercase tracking-widest">
-                  Neural Sync Active
+                  Account Sync Active
                 </span>
               </div>
               
               <div className="h-9 w-9 md:h-11 md:w-11 rounded-xl bg-indigo-600 border border-indigo-400/30 flex items-center justify-center text-white font-black text-xs md:text-sm uppercase shadow-lg shadow-indigo-600/20">
-                {user?.fullName?.charAt(0) || 'P'}
+                {user?.fullName?.charAt(0) || 'U'}
               </div>
 
               <AnimatePresence>
@@ -87,7 +86,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout
                     className="absolute top-full right-0 mt-4 w-56 glass-panel rounded-2xl p-2 shadow-3d border border-white/10 z-50"
                   >
                     <div className="p-3 border-b border-white/5 mb-2">
-                      <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Identity Terminal</p>
+                      <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">User Profile</p>
                       <p className="text-xs font-bold text-white truncate">{user?.email}</p>
                     </div>
                     <button 
@@ -95,7 +94,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-rose-400 hover:bg-rose-500/10 transition-colors"
                     >
                       <Icon name="trash" className="h-3.5 w-3.5" />
-                      Logout Protocol
+                      Sign Out
                     </button>
                   </motion.div>
                 )}

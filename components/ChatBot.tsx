@@ -75,7 +75,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: `Systems online. How can I assist with your career development today, ${user.fullName.split(' ')[0]}?` }
+    { role: 'model', text: `Hello ${user.fullName.split(' ')[0]}! I'm your Career Assistant. How can I help you today?` }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -265,7 +265,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
       const chat = ai.chats.create({ 
           model: 'gemini-3-flash-preview',
           config: {
-              systemInstruction: "You are a specialized career AI. Provide insightful, data-driven advice for students. Focus on speed and directness."
+              systemInstruction: "You are a specialized career AI assistant. Provide insightful, helpful advice for students regarding their career path, resumes, and interviews."
           }
       });
       const stream = await chat.sendMessageStream({ message: txt });
@@ -288,7 +288,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
         });
     } catch (error: any) { 
         console.error(error);
-        const errorMsg = error?.message || "Communication link failure.";
+        const errorMsg = error?.message || "Something went wrong with the connection.";
         setMessages(prev => [...prev, { role: 'model', text: errorMsg, isError: true }]);
         if (errorMsg.includes("API Key") || errorMsg.includes("entity was not found")) {
           handleKeyError();
@@ -306,10 +306,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
             <Icon name="logo" className="h-6 w-6 text-white" />
           </motion.div>
           <div className="flex flex-col">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Career Agent</h2>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">Career Assistant</h2>
             <div className="flex items-center gap-1.5 mt-1">
                <span className="h-1 w-1 rounded-full bg-indigo-400 animate-pulse" />
-               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none">Neural Core Active</span>
+               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none">Active & Ready</span>
             </div>
           </div>
         </div>
@@ -317,7 +317,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
             onClick={isVoiceMode ? stopVoiceMode : startVoiceMode} 
             className={`btn-3d px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] ${isVoiceMode ? 'bg-rose-600 shadow-rose-950' : 'bg-indigo-600'}`}
         >
-          {isVoiceMode ? 'Terminate Stream' : 'Initialize Voice'}
+          {isVoiceMode ? 'Stop Voice Chat' : 'Start Voice Chat'}
         </button>
       </div>
 
@@ -343,7 +343,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
             </div>
             <VoiceVisualizer level={isSpeaking ? audioLevel : inputAudioLevel} color={isSpeaking ? 'bg-indigo-400' : 'bg-slate-700'} />
             <p className="mt-8 text-xs font-black uppercase tracking-[0.4em] text-slate-500 animate-pulse">
-                {isSpeaking ? "Receiving Data Transmission" : "Listening for User Input"}
+                {isSpeaking ? "Assistant is speaking..." : "Listening to you..."}
             </p>
           </motion.div>
         ) : (
@@ -381,7 +381,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Query neural network..."
+              placeholder="Ask me anything about your career..."
               className="flex-grow glass-panel border-2 border-slate-100 dark:border-slate-800 rounded-2xl px-8 py-5 text-sm font-bold shadow-inner-soft focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
             />
             <button type="submit" className="p-5 bg-indigo-600 rounded-2xl btn-3d shadow-xl transition-all active:scale-90">

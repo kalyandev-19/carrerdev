@@ -70,7 +70,7 @@ const IndustryQA: React.FC = () => {
                 if (metadata?.groundingChunks) {
                     finalSources = metadata.groundingChunks
                         .map((c: any) => ({ 
-                            title: c.web?.title || 'External Intel', 
+                            title: c.web?.title || 'Reference Link', 
                             uri: c.web?.uri || '' 
                         }))
                         .filter((s: any) => s.uri);
@@ -96,7 +96,7 @@ const IndustryQA: React.FC = () => {
             });
         } catch (error: any) {
             console.error(error);
-            const errorMsg = error?.message || "Connection interrupted. Terminal retry advised.";
+            const errorMsg = error?.message || "Something went wrong. Please try again.";
             setConversation(prev => {
                 const next = [...prev];
                 const lastIdx = next.length - 1;
@@ -119,7 +119,7 @@ const IndustryQA: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               className="mb-6 md:mb-8"
             >
-                <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4 px-2">Expert Industry Q&A</h2>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4 px-2">Industry Expert Advice</h2>
                 <div className="flex flex-wrap gap-2 px-2">
                     {industryFields.map((f, i) => (
                         <motion.button
@@ -213,7 +213,7 @@ const IndustryQA: React.FC = () => {
                             type="text"
                             value={question}
                             onChange={(e) => setQuestion(e.target.value)}
-                            placeholder={`Ask about ${field}...`}
+                            placeholder={`Type your question about ${field}...`}
                             className="flex-grow bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl md:rounded-2xl px-4 md:px-6 py-3 md:py-4 text-xs md:text-sm font-semibold shadow-inner-soft focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
                         />
                         <button 
