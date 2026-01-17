@@ -21,8 +21,8 @@ export const databaseService = {
       .single();
 
     if (error) {
-      console.warn("Profile sync error:", error.message);
-      return user;
+      console.error("Critical Profile Sync Error:", error.message);
+      throw new Error(`Database connection failed: ${error.message}`);
     }
 
     return {
@@ -92,6 +92,8 @@ export const databaseService = {
   },
 
   saveResume: async (resume: ResumeData): Promise<ResumeData> => {
+    if (!resume.userId) throw new Error("Missing user identification. Please log in again.");
+
     const payload: any = {
       user_id: resume.userId,
       title: resume.title || 'Untitled Resume',
@@ -116,7 +118,10 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("Resume Save Error:", error);
+      throw new Error(`Save failed: ${error.message}`);
+    }
     
     return {
         id: data.id,

@@ -217,15 +217,24 @@ const App: React.FC = () => {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('careerdev_user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem('careerdev_user');
+    const checkAndSync = async () => {
+      const storedUser = localStorage.getItem('careerdev_user');
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          // Auto-sync profile with backend to ensure foreign key constraints are met
+          // even if the database was cleared or the user is returning to a fresh instance.
+          const synced = await databaseService.syncUserProfile(parsed);
+          setUser(synced);
+        } catch (e) {
+          console.warn("Auto-sync failed, logging out:", e);
+          localStorage.removeItem('careerdev_user');
+          setUser(null);
+        }
       }
-    }
-    setIsAuthChecking(false);
+      setIsAuthChecking(false);
+    };
+    checkAndSync();
   }, []);
 
   const handleLogin = (userData: User) => {
