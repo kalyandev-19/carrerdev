@@ -1,5 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { ResumeData, User, Experience, Education } from '../types.ts';
 import Button from './common/Button.tsx';
 import Input from './common/Input.tsx';
@@ -76,31 +78,50 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
         setIsSaving(true);
         try {
             // 1. Ensure latest state is saved to Cloud
-            await handleManualSave();
+            const savedData = await handleManualSave();
 
-            // 2. Cloud Archive for History (Text Version)
+            // 2. Generate PDF using html2canvas and jsPDF
+            const element = document.getElementById('resume-export-area');
+            if (!element) throw new Error("Export component not found");
+
+            // Temporary styles for high-fidelity capture
+            const canvas = await html2canvas(element, {
+                scale: 2, // Double scaling for retina-level text sharpness
+                useCORS: true,
+                logging: false,
+                backgroundColor: "#ffffff",
+                windowWidth: 794, // Standard A4 width in pixels at 96 DPI
+            });
+
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            
+            // PDF Setup (A4 dimensions: 210mm x 297mm)
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4',
+            });
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            
+            const fileName = `${(resume.fullName || 'CareerDev_Resume').replace(/\s+/g, '_')}_Resume.pdf`;
+            
+            // 3. Cloud Archive for History (Actual PDF File)
             if (user.id) {
-                const headerText = `RESUME: ${resume.fullName || 'User'}\nCONTACT: ${resume.email} | ${resume.phone}\n\n`;
-                const summaryText = `SUMMARY:\n${resume.summary}\n\n`;
-                const expText = `EXPERIENCE:\n` + resume.experience.map(e => `${e.role} at ${e.company} (${e.startDate} - ${e.endDate})\n${e.responsibilities}`).join('\n\n') + `\n\n`;
-                const eduText = `EDUCATION:\n` + resume.education.map(e => `${e.degree} at ${e.school} (${e.startDate} - ${e.endDate})`).join('\n\n') + `\n\n`;
-                const skillsText = `SKILLS: ${resume.skills}`;
-                
-                const blob = new Blob([headerText + summaryText + expText + eduText + skillsText], { type: 'text/plain' });
-                const file = new File([blob], `${(resume.fullName || 'Resume').replace(/\s+/g, '_')}_Archive.txt`, { type: 'text/plain' });
-                await databaseService.uploadAndRecordPDF(file, user.id);
+                const pdfBlob = pdf.output('blob');
+                const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                await databaseService.uploadAndRecordPDF(pdfFile, user.id);
             }
 
-            // 3. Trigger Native Print Dialog
-            setTimeout(() => {
-                const originalTitle = document.title;
-                document.title = `${(resume.fullName || 'Resume').replace(/\s+/g, '_')}_Resume`;
-                window.print();
-                document.title = originalTitle;
-            }, 100);
+            // 4. Trigger Instant Download
+            pdf.save(fileName);
             
-        } catch (e) {
+        } catch (e: any) {
             console.error("Export sequence failure:", e);
+            setSaveError(e.message || "PDF generation failed.");
         } finally {
             setIsSaving(false);
         }
@@ -134,7 +155,11 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
     }, [resume]);
 
     const ResumeContent = ({ isPrint = false }: { isPrint?: boolean }) => (
-        <div id={isPrint ? "resume-export-area" : undefined} className={`bg-white text-slate-900 ${isPrint ? '' : 'p-6 md:p-12 shadow-2xl h-full border border-slate-100'}`}>
+        <div 
+          id={isPrint ? "resume-export-area" : undefined} 
+          className={`bg-white text-slate-900 ${isPrint ? 'pdf-capture-area' : 'p-6 md:p-12 shadow-2xl h-full border border-slate-100'}`}
+          style={isPrint ? { padding: '20mm', display: 'block' } : {}}
+        >
             <header className="text-center mb-8">
                 <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tighter mb-2 break-words">{resume.fullName || 'USER NAME'}</h1>
                 <div className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest space-y-1 md:space-y-0 md:space-x-2 flex flex-col md:flex-row justify-center items-center">
@@ -199,7 +224,8 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
 
     return (
         <div className="py-4 md:py-8">
-            <div className="print-only">
+            {/* Hidden capture area for jsPDF */}
+            <div className="no-print">
                 <ResumeContent isPrint={true} />
             </div>
             
@@ -220,7 +246,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                     <Button onClick={handleExport} isLoading={isSaving} className="flex-1 md:flex-none px-6 md:px-8 py-2.5 md:py-3 bg-indigo-600 rounded-xl shadow-xl">
                         <div className="flex items-center justify-center gap-2">
                             <Icon name="download" className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                            <span className="text-[10px] md:text-xs">Download PDF</span>
+                            <span className="text-[10px] md:text-xs">{isSaving ? 'Generating...' : 'Download PDF'}</span>
                         </div>
                     </Button>
                 </div>

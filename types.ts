@@ -57,13 +57,3 @@ export interface IndustryResponse {
   text: string;
   sources: GroundingSource[];
 }
-
-export interface JobOpportunity {
-  id: string;
-  role: string;
-  company: string;
-  location: string;
-  description: string;
-  url: string;
-  type: string;
-}

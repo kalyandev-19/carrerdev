@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -77,6 +78,16 @@
       /* Default print hiding */
       .print-only {
         display: none !important;
+      }
+
+      /* Hidden area for PDF capture - must be visible but off-screen */
+      .pdf-capture-area {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        width: 210mm;
+        background: white;
+        color: black;
       }
 
       @media print {
@@ -168,7 +179,9 @@
     "clsx": "https://esm.sh/clsx@2.1.1",
     "framer-motion": "https://esm.sh/framer-motion@11.15.0?external=react,react-dom",
     "simplex-noise": "https://esm.sh/simplex-noise@4.0.3",
-    "@clerk/clerk-react": "https://esm.sh/@clerk/clerk-react@5.22.0?external=react,react-dom"
+    "@clerk/clerk-react": "https://esm.sh/@clerk/clerk-react@5.22.0?external=react,react-dom",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "html2canvas": "https://esm.sh/html2canvas@1.4.1"
   }
 }
 </script>

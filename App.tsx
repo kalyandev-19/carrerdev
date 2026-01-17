@@ -17,6 +17,7 @@ import { BackgroundPaths } from './components/ui/background-paths.tsx';
 import { MorphingCardStack } from './components/ui/morphing-card-stack.tsx';
 import { Page, ResumeData, User } from './types.ts';
 import { databaseService } from './services/databaseService.ts';
+import { getFastCareerTipStream } from './services/geminiService.ts';
 
 const LoadingScreen = () => (
   <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
@@ -42,14 +43,37 @@ const LoadingScreen = () => (
 
 const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) => void; userId: string; onEditResume: (resumeId: string) => void }) => {
   const [resumes, setResumes] = useState<ResumeData[]>([]);
+  const [fastTip, setFastTip] = useState<string>("Initializing intelligence...");
+  const [isTipLoading, setIsTipLoading] = useState(false);
   const containerRef = useRef(null);
   
   const roadmapData = [
     { id: "1", title: "Build Resume", description: "Create a professional, high-impact resume.", icon: <Icon name="resume" className="h-5 w-5" /> },
     { id: "2", title: "Review Resume", description: "Get instant AI feedback on your documents.", icon: <Icon name="analyzer" className="h-5 w-5" /> },
-    { id: "3", title: "Job Search", description: "Find real-time internships and jobs.", icon: <Icon name="send" className="h-5 w-5" /> },
+    { id: "3", title: "Market Insights", description: "Get real-time trends for your industry.", icon: <Icon name="qa" className="h-5 w-5" /> },
     { id: "4", title: "Interview Prep", description: "Practice with our voice-enabled AI bot.", icon: <Icon name="logo" className="h-5 w-5" /> },
   ];
+
+  const fetchFastTip = async () => {
+    setIsTipLoading(true);
+    setFastTip("");
+    try {
+      const stream = getFastCareerTipStream();
+      let fullText = "";
+      for await (const chunk of stream) {
+        fullText += chunk;
+        setFastTip(fullText);
+      }
+    } catch (e) {
+      setFastTip("Focus on your unique strengths.");
+    } finally {
+      setIsTipLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFastTip();
+  }, []);
 
   const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start start", "end start"] });
   const heroOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
@@ -66,18 +90,31 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
 
   useEffect(() => { loadData(); }, [userId]);
 
-  const handleDeleteResume = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm("Permanently delete this resume?")) {
-        await databaseService.deleteResume(id);
-        loadData();
-    }
-  };
-
   return (
     <div className="relative" ref={containerRef}>
       <BackgroundPaths className="opacity-10 fixed inset-0 z-0" />
       <div className="relative z-10 py-4 px-2 sm:px-4">
+        
+        {/* Fast AI Neural Pulse Bar */}
+        <div className="max-w-7xl mx-auto mb-8 relative">
+           <div className="glass-panel py-4 px-8 rounded-2xl border border-indigo-500/20 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-indigo-600/20 p-2 rounded-lg text-indigo-400">
+                  <Icon name="bolt" className="h-4 w-4" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Neural Pulse:</span>
+                <span className="text-xs font-bold text-white italic">"{fastTip}"</span>
+              </div>
+              <button 
+                onClick={fetchFastTip} 
+                disabled={isTipLoading}
+                className="text-[9px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-colors"
+              >
+                {isTipLoading ? "Syncing..." : "[ REFRESH INSIGHT ]"}
+              </button>
+           </div>
+        </div>
+
         <motion.div 
           style={{ opacity: heroOpacity, scale: heroScale }}
           className="w-full mx-auto rounded-[30px] md:rounded-[50px] min-h-[35rem] md:h-[40rem] overflow-hidden relative mb-12 md:mb-16 shadow-3d bg-slate-950"
@@ -89,16 +126,16 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
               className="max-w-4xl mx-auto text-center space-y-6 md:space-y-8 glass-panel !bg-black/40 p-6 md:p-12 rounded-[40px] md:rounded-[60px] border-white/10"
             >
               <div className="inline-flex items-center gap-2 px-4 md:px-6 py-1.5 md:py-2 bg-indigo-600/30 rounded-full border border-indigo-500/30 text-indigo-300 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em]">
-                 Professional AI v3.5
+                 Spatial Intelligence v4.0
               </div>
               <h2 className="text-white text-3xl md:text-7xl font-black tracking-tighter leading-tight md:leading-none">
-                AI Powered Career <br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Assistant.</span>
+                AI Driven Career <br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Ecosystem.</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mt-6 md:mt-8">
                 <div className="text-center md:text-left space-y-4 md:space-y-6">
                   <p className="text-white/80 text-sm md:text-lg font-medium leading-relaxed">
-                    Build your future with expert resume tools and smart industry insights.
+                    Forge your future with senior-tier AI reasoning and real-time industry intelligence.
                   </p>
                   <button onClick={() => navigateTo(Page.ResumeBuilder)} className="btn-3d w-full md:w-auto px-8 py-3.5 md:px-10 md:py-4 rounded-2xl text-white font-black uppercase tracking-widest text-[10px] md:text-xs">
                     Start Building
@@ -119,13 +156,16 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
                 <Icon name="chat" className="h-5 w-5 md:h-6 text-indigo-400" />
               </div>
               <div>
-                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">Career Assistance</h2>
-                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">AI Chat & Market Insights</p>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">AI Workspace</h2>
+                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">Pro reasoning & Native Audio</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-              <Card title="Career Chat" description="Chat with your personal AI career advisor." icon={<Icon name="chat" />} onClick={() => navigateTo(Page.Chat)} glowColor="blue" />
-              <Card title="Job Board" description="Find live internships and job openings." icon={<Icon name="send" />} onClick={() => navigateTo(Page.Opportunities)} glowColor="red" />
+              <Card title="Career Agent" description="Deep strategy chat with Gemini 3 Pro." icon={<Icon name="chat" />} onClick={() => navigateTo(Page.Chat)} glowColor="purple" />
+              <Card title="Industry Q&A" description="Search-grounded live market data." icon={<Icon name="qa" />} onClick={() => navigateTo(Page.IndustryQA)} glowColor="orange" />
+              <div className="sm:col-span-2">
+                <Card title="Opportunity Node" description="Live jobs & internships via Search Grounding." icon={<Icon name="send" />} onClick={() => navigateTo(Page.Opportunities)} glowColor="green" />
+              </div>
             </div>
           </div>
 
@@ -135,20 +175,20 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
                 <Icon name="resume" className="h-5 w-5 md:h-6 text-emerald-400" />
               </div>
               <div>
-                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">My Documents</h2>
-                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">Resume Builder & Analysis</p>
+                <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">Portfolio Engine</h2>
+                <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">Fast drafting & Strategic audits</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
-              <Card title="Resume Builder" description="Create and edit professional resumes." icon={<Icon name="resume" />} onClick={() => navigateTo(Page.ResumeBuilder)} glowColor="purple" />
-              <Card title="Resume Feedback" description="Get instant AI feedback on your resume." icon={<Icon name="analyzer" />} onClick={() => navigateTo(Page.ResumeAnalyzer)} glowColor="green" />
+              <Card title="Resume Studio" description="Draft high-velocity resumes with AI." icon={<Icon name="resume" />} onClick={() => navigateTo(Page.ResumeBuilder)} glowColor="blue" />
+              <Card title="Strategic Audit" description="Performance scoring with Deep Reasoning." icon={<Icon name="analyzer" />} onClick={() => navigateTo(Page.ResumeAnalyzer)} glowColor="green" />
             </div>
 
             <div className="mb-8 md:mb-10">
               <h3 className="text-[9px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 mb-4 md:mb-6 px-2">Saved Resumes</h3>
               <div className="space-y-3 max-h-[250px] overflow-y-auto custom-scrollbar px-2">
                 {resumes.length === 0 ? (
-                  <p className="text-[10px] text-slate-600 uppercase font-black tracking-widest italic py-4">No resumes saved yet.</p>
+                  <p className="text-[10px] text-slate-600 uppercase font-black tracking-widest italic py-4">No resumes archived.</p>
                 ) : (
                   resumes.map((res) => (
                     <div key={res.id} className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
@@ -156,13 +196,9 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
                         <Icon name="resume" className="h-4 w-4 md:h-5 md:w-5 text-indigo-400 shrink-0" />
                         <div className="min-w-0">
                           <h5 className="text-xs md:text-sm font-bold text-white uppercase truncate">{res.title}</h5>
-                          <p className="text-[7px] md:text-[8px] font-black text-slate-500 uppercase">Updated: {new Date(res.updatedAt || '').toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <div className="flex gap-1.5 md:gap-2 shrink-0">
-                        <button onClick={() => onEditResume(res.id!)} className="p-1.5 md:p-2 hover:bg-indigo-600 rounded-lg transition-colors"><Icon name="edit" className="h-3 w-3 md:h-3.5 md:w-3.5" /></button>
-                        <button onClick={(e) => handleDeleteResume(res.id!, e)} className="p-1.5 md:p-2 hover:bg-rose-600 rounded-lg transition-colors"><Icon name="trash" className="h-3 w-3 md:h-3.5 md:w-3.5" /></button>
-                      </div>
+                      <button onClick={() => onEditResume(res.id!)} className="p-1.5 md:p-2 hover:bg-indigo-600 rounded-lg transition-colors"><Icon name="edit" className="h-3 w-3" /></button>
                     </div>
                   ))
                 )}
@@ -222,12 +258,9 @@ const App: React.FC = () => {
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);
-          // Auto-sync profile with backend to ensure foreign key constraints are met
-          // even if the database was cleared or the user is returning to a fresh instance.
           const synced = await databaseService.syncUserProfile(parsed);
           setUser(synced);
         } catch (e) {
-          console.warn("Auto-sync failed, logging out:", e);
           localStorage.removeItem('careerdev_user');
           setUser(null);
         }
