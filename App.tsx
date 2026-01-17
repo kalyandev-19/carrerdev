@@ -7,7 +7,6 @@ import IndustryQA from './components/IndustryQA.tsx';
 import ResumeBuilder from './components/ResumeBuilder.tsx';
 import ResumeAnalyzer from './components/ResumeAnalyzer.tsx';
 import ChatBot from './components/ChatBot.tsx';
-import Opportunities from './components/Opportunities.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import Card from './components/common/Card.tsx';
 import Icon from './components/common/Icon.tsx';
@@ -163,9 +162,6 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
               <Card title="Career Agent" description="Deep strategy chat with Gemini 3 Pro." icon={<Icon name="chat" />} onClick={() => navigateTo(Page.Chat)} glowColor="purple" />
               <Card title="Industry Q&A" description="Search-grounded live market data." icon={<Icon name="qa" />} onClick={() => navigateTo(Page.IndustryQA)} glowColor="orange" />
-              <div className="sm:col-span-2">
-                <Card title="Opportunity Node" description="Live jobs & internships via Search Grounding." icon={<Icon name="send" />} onClick={() => navigateTo(Page.Opportunities)} glowColor="green" />
-              </div>
             </div>
           </div>
 
@@ -238,7 +234,6 @@ const Workspace: React.FC<{ user: User; onLogout: () => void }> = ({ user, onLog
               {currentPage === Page.ResumeBuilder && <ResumeBuilder user={user} resumeId={editingResumeId} />}
               {currentPage === Page.ResumeAnalyzer && <ResumeAnalyzer userId={user.id} />}
               {currentPage === Page.Chat && <ChatBot user={user} />}
-              {currentPage === Page.Opportunities && <Opportunities />}
             </motion.div>
           </AnimatePresence>
         </div>

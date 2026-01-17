@@ -4,8 +4,7 @@ export enum Page {
   IndustryQA = 'qa',
   ResumeBuilder = 'builder',
   ResumeAnalyzer = 'analyzer',
-  Chat = 'chat',
-  Opportunities = 'opportunities'
+  Chat = 'chat'
 }
 
 export interface User {
