@@ -56,8 +56,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
         if (saveError) setSaveError(null);
     };
 
-    const handleManualSave = async () => {
-        setIsSaving(true);
+    const performSave = async (): Promise<ResumeData | undefined> => {
         setSaveError(null);
         try {
             const saved = await databaseService.saveResume(resume);
@@ -69,6 +68,13 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
         } catch (e: any) {
             console.error("Cloud Sync Blocked:", e);
             setSaveError(e.message || "Failed to sync with cloud. Check internet and permissions.");
+        }
+    };
+
+    const handleManualSave = async () => {
+        setIsSaving(true);
+        try {
+            return await performSave();
         } finally {
             setIsSaving(false);
         }
@@ -78,7 +84,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
         setIsSaving(true);
         try {
             // 1. Ensure latest state is saved to Cloud
-            const savedData = await handleManualSave();
+            const savedData = await performSave();
 
             // 2. Generate PDF using html2canvas and jsPDF
             const element = document.getElementById('resume-export-area');

@@ -165,7 +165,7 @@ const ResumeAnalyzer: React.FC<{ userId?: string }> = ({ userId }) => {
                         )}
                     </div>
                     <div className="prose prose-invert max-w-none font-bold text-slate-200 leading-relaxed">
-                        <div dangerouslySetInnerHTML={{ __html: analysis.replace(/\n/g, '<br />') }} />
+                        <div style={{ whiteSpace: 'pre-wrap' }}>{analysis}</div>
                         {isLoading && <span className={`inline-block w-2 h-5 ml-2 animate-pulse rounded-full ${isDeepAudit ? 'bg-purple-500' : 'bg-indigo-500'}`} />}
                     </div>
                 </motion.div>
