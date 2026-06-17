@@ -80,7 +80,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   const [audioLevel, setAudioLevel] = useState(0);
   const [inputAudioLevel, setInputAudioLevel] = useState(0);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const analyzerRef = useRef<AnalyserNode | null>(null);
@@ -92,7 +92,12 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
   const activeSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, [messages]);
 
   const stopVoiceMode = useCallback(() => {
@@ -154,7 +159,10 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
             const processor = inputCtx.createScriptProcessor(4096, 1, 1);
             processor.onaudioprocess = (e) => {
               const data = e.inputBuffer.getChannelData(0);
-              const pcm = encode(new Uint8Array(new Int16Array(data.map(v => v * 32768)).buffer));
+              const pcm = encode(new Uint8Array(new Int16Array(data.map(v => {
+                const clamped = Math.max(-1, Math.min(1, v));
+                return clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF;
+              })).buffer));
               sessionPromise.then(s => {
                   activeSessionRef.current = s;
                   s.sendRealtimeInput({ media: { data: pcm, mimeType: 'audio/pcm;rate=16000' } });
@@ -327,7 +335,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
             <VoiceVisualizer level={isSpeaking ? audioLevel : inputAudioLevel} color={isSpeaking ? 'bg-indigo-400' : 'bg-slate-700'} />
           </motion.div>
         ) : (
-          <div className="flex-grow overflow-y-auto p-10 space-y-8 custom-scrollbar">
+          <div ref={messagesContainerRef} className="flex-grow overflow-y-auto p-10 space-y-8 custom-scrollbar">
             <AnimatePresence mode="popLayout">
               {messages.map((msg, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -338,7 +346,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ user }) => {
                 </motion.div>
               ))}
             </AnimatePresence>
-            <div ref={scrollRef} />
           </div>
         )}
       </div>

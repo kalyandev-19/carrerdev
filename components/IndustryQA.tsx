@@ -20,7 +20,7 @@ const IndustryQA: React.FC = () => {
     const [question, setQuestion] = useState<string>('');
     const [conversation, setConversation] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const conversationEndRef = useRef<HTMLDivElement | null>(null);
+    const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
     const industryFields = [
         'Internships & Jobs', 
@@ -32,12 +32,13 @@ const IndustryQA: React.FC = () => {
         'Finance'
     ];
 
-    const scrollToBottom = () => {
-        conversationEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-
     useEffect(() => {
-        scrollToBottom();
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTo({
+                top: chatContainerRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     }, [conversation, isLoading]);
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -145,7 +146,7 @@ const IndustryQA: React.FC = () => {
               animate={{ opacity: 1, scale: 1 }}
               className="glass-panel min-h-[500px] md:h-[600px] rounded-[30px] md:rounded-[40px] flex flex-col shadow-3d overflow-hidden border border-white/5"
             >
-                <div className="flex-grow p-4 md:p-8 overflow-y-auto space-y-5 md:space-y-6 custom-scrollbar">
+                <div ref={chatContainerRef} className="flex-grow p-4 md:p-8 overflow-y-auto space-y-5 md:space-y-6 custom-scrollbar">
                     {conversation.length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-center opacity-50 py-20">
                             <motion.div
@@ -204,7 +205,6 @@ const IndustryQA: React.FC = () => {
                           </motion.div>
                       ))}
                     </AnimatePresence>
-                    <div ref={conversationEndRef} />
                 </div>
 
                 <div className="p-4 md:p-8 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800">

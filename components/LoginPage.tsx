@@ -21,6 +21,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +38,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       }
 
       const safeEmail = formData.email.toLowerCase().trim();
+      if (!safeEmail.endsWith('@gmail.com')) {
+        throw new Error('Only @gmail.com email addresses are allowed.');
+      }
+
+      const password = formData.password;
+      const hasLetter = /[a-zA-Z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      if (password.length < 6 || !hasLetter || !hasNumber) {
+        throw new Error('Password must be at least 6 characters long and contain both letters and numbers.');
+      }
+
       // Simple unique ID generation for the session
       const userId = btoa(encodeURIComponent(safeEmail)).replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
       
@@ -112,17 +124,27 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <Input 
               label="Email Address" 
               type="email" 
-              placeholder="name@example.com" 
+              placeholder="name@gmail.com" 
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
             />
             
             <Input 
               label="Password" 
-              type="password" 
+              type={showPassword ? 'text' : 'password'} 
               placeholder="••••••••" 
               value={formData.password}
               onChange={(e) => handleInputChange('password', e.target.value)}
+              suffix={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-slate-500 hover:text-indigo-400 transition-colors focus:outline-none"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <Icon name={showPassword ? 'eyeOff' : 'eye'} className="h-5 w-5" />
+                </button>
+              }
             />
 
             {error && (

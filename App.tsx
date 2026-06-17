@@ -40,8 +40,7 @@ const LoadingScreen = () => (
   </div>
 );
 
-const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) => void; userId: string; onEditResume: (resumeId: string) => void }) => {
-  const [resumes, setResumes] = useState<ResumeData[]>([]);
+const Home = ({ navigateTo }: { navigateTo: (page: Page) => void }) => {
   const [fastTip, setFastTip] = useState<string>("Initializing intelligence...");
   const [isTipLoading, setIsTipLoading] = useState(false);
   const containerRef = useRef(null);
@@ -53,11 +52,11 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
     { id: "4", title: "Interview Prep", description: "Practice with our voice-enabled AI bot.", icon: <Icon name="logo" className="h-5 w-5" /> },
   ];
 
-  const fetchFastTip = async () => {
+  const fetchFastTip = async (bypassCache: boolean = false) => {
     setIsTipLoading(true);
     setFastTip("");
     try {
-      const stream = getFastCareerTipStream();
+      const stream = getFastCareerTipStream(bypassCache);
       let fullText = "";
       for await (const chunk of stream) {
         fullText += chunk;
@@ -71,23 +70,12 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
   };
 
   useEffect(() => {
-    fetchFastTip();
+    fetchFastTip(false);
   }, []);
 
   const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start start", "end start"] });
   const heroOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.4], [1, 0.8]);
-
-  const loadData = async () => {
-    try {
-      const userResumes = await databaseService.getResumes(userId);
-      setResumes(userResumes || []);
-    } catch (e) {
-      console.error("Dashboard sync error:", e);
-    }
-  };
-
-  useEffect(() => { loadData(); }, [userId]);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -105,7 +93,7 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
                 <span className="text-xs font-bold text-white italic">"{fastTip}"</span>
               </div>
               <button 
-                onClick={fetchFastTip} 
+                onClick={() => fetchFastTip(true)} 
                 disabled={isTipLoading}
                 className="text-[9px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-colors"
               >
@@ -175,30 +163,9 @@ const Home = ({ navigateTo, userId, onEditResume }: { navigateTo: (page: Page) =
                 <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-500">Fast drafting & Strategic audits</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
               <Card title="Resume Studio" description="Draft high-velocity resumes with AI." icon={<Icon name="resume" />} onClick={() => navigateTo(Page.ResumeBuilder)} glowColor="blue" />
               <Card title="Strategic Audit" description="Performance scoring with Deep Reasoning." icon={<Icon name="analyzer" />} onClick={() => navigateTo(Page.ResumeAnalyzer)} glowColor="green" />
-            </div>
-
-            <div className="mb-8 md:mb-10">
-              <h3 className="text-[9px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.4em] text-slate-400 mb-4 md:mb-6 px-2">Saved Resumes</h3>
-              <div className="space-y-3 max-h-[250px] overflow-y-auto custom-scrollbar px-2">
-                {resumes.length === 0 ? (
-                  <p className="text-[10px] text-slate-600 uppercase font-black tracking-widest italic py-4">No resumes archived.</p>
-                ) : (
-                  resumes.map((res) => (
-                    <div key={res.id} className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
-                      <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
-                        <Icon name="resume" className="h-4 w-4 md:h-5 md:w-5 text-indigo-400 shrink-0" />
-                        <div className="min-w-0">
-                          <h5 className="text-xs md:text-sm font-bold text-white uppercase truncate">{res.title}</h5>
-                        </div>
-                      </div>
-                      <button onClick={() => onEditResume(res.id!)} className="p-1.5 md:p-2 hover:bg-indigo-600 rounded-lg transition-colors"><Icon name="edit" className="h-3 w-3" /></button>
-                    </div>
-                  ))
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -218,7 +185,6 @@ const Workspace: React.FC<{ user: User; onLogout: () => void }> = ({ user, onLog
   }, []);
 
   const navigateTo = (page: Page) => { setEditingResumeId(undefined); setCurrentPage(page); };
-  const onEditResume = (id: string) => { setEditingResumeId(id); setCurrentPage(Page.ResumeBuilder); };
 
   if (!isLoaded) return <LoadingScreen />;
 
@@ -229,7 +195,7 @@ const Workspace: React.FC<{ user: User; onLogout: () => void }> = ({ user, onLog
         <div className="container mx-auto px-4 max-w-7xl">
           <AnimatePresence mode="wait">
             <motion.div key={currentPage} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              {currentPage === Page.Home && <Home navigateTo={navigateTo} userId={user.id} onEditResume={onEditResume} />}
+              {currentPage === Page.Home && <Home navigateTo={navigateTo} />}
               {currentPage === Page.IndustryQA && <IndustryQA />}
               {currentPage === Page.ResumeBuilder && <ResumeBuilder user={user} resumeId={editingResumeId} />}
               {currentPage === Page.ResumeAnalyzer && <ResumeAnalyzer userId={user.id} />}
@@ -256,8 +222,14 @@ const App: React.FC = () => {
           const synced = await databaseService.syncUserProfile(parsed);
           setUser(synced);
         } catch (e) {
-          localStorage.removeItem('careerdev_user');
-          setUser(null);
+          console.warn("Database startup sync failed, falling back to local credentials:", e);
+          try {
+            const parsed = JSON.parse(storedUser);
+            setUser(parsed);
+          } catch (jsonErr) {
+            localStorage.removeItem('careerdev_user');
+            setUser(null);
+          }
         }
       }
       setIsAuthChecking(false);

@@ -5,7 +5,6 @@ import Button from './common/Button.tsx';
 import Textarea from './common/Textarea.tsx';
 import Icon from './common/Icon.tsx';
 import { analyzeResumeStream } from '../services/geminiService.ts';
-import { databaseService } from '../services/databaseService.ts';
 
 const ResumeAnalyzer: React.FC<{ userId?: string }> = ({ userId }) => {
     const [resumeText, setResumeText] = useState<string>('');
@@ -13,7 +12,6 @@ const ResumeAnalyzer: React.FC<{ userId?: string }> = ({ userId }) => {
     const [analysis, setAnalysis] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isDeepAudit, setIsDeepAudit] = useState<boolean>(true);
-    const [saveToCloud, setSaveToCloud] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,13 +41,8 @@ const ResumeAnalyzer: React.FC<{ userId?: string }> = ({ userId }) => {
         setError('');
         
         try {
-            if (selectedFile && userId && saveToCloud) {
-                try {
-                    await databaseService.uploadAndRecordPDF(selectedFile.raw, userId);
-                } catch (err) {
-                    console.warn("Cloud backup failed, continuing with analysis:", err);
-                }
-            }
+            // Local analysis only - no DB archive for files
+
 
             const content = selectedFile ? { data: selectedFile.data, mimeType: selectedFile.mimeType } : resumeText;
             const stream = analyzeResumeStream(content, isDeepAudit);
@@ -63,7 +56,7 @@ const ResumeAnalyzer: React.FC<{ userId?: string }> = ({ userId }) => {
         } finally { 
             setIsLoading(false); 
         }
-    }, [resumeText, selectedFile, userId, saveToCloud, isDeepAudit]);
+    }, [resumeText, selectedFile, userId, isDeepAudit]);
 
     return (
         <div className="max-w-4xl mx-auto py-12 px-6">
@@ -121,18 +114,7 @@ const ResumeAnalyzer: React.FC<{ userId?: string }> = ({ userId }) => {
                             <Icon name="resume" className="h-12 w-12 text-indigo-600" />
                             <p className="font-black text-white uppercase tracking-tight">{selectedFile.name}</p>
                             
-                            {userId && (
-                                <div className="flex items-center gap-3 mt-2">
-                                    <input 
-                                        type="checkbox" 
-                                        id="saveCloud" 
-                                        checked={saveToCloud} 
-                                        onChange={(e) => setSaveToCloud(e.target.checked)}
-                                        className="h-4 w-4 accent-indigo-600"
-                                    />
-                                    <label htmlFor="saveCloud" className="text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer">Save to my documents</label>
-                                </div>
-                            )}
+                            {/* No DB upload option for local files */}
 
                             <button onClick={() => setSelectedFile(null)} className="text-[10px] font-black uppercase tracking-widest text-rose-500 mt-2">Remove File</button>
                         </div>

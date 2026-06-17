@@ -66,7 +66,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, navigateTo, user, onLogout
               onMouseLeave={() => setShowProfileMenu(false)}
             >
               <div className="hidden sm:flex flex-col items-end">
-                <span className="text-[10px] md:text-xs font-black text-white leading-tight truncate max-w-[100px] md:max-wMap-[120px] uppercase tracking-tighter">
+                <span className="text-[10px] md:text-xs font-black text-white leading-tight truncate max-w-[100px] md:max-w-[120px] uppercase tracking-tighter">
                   {user?.fullName || 'Guest User'}
                 </span>
                 <span className="text-[7px] md:text-[9px] text-emerald-400 font-black uppercase tracking-widest">

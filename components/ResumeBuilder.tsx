@@ -115,14 +115,7 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
             
             const fileName = `${(resume.fullName || 'CareerDev_Resume').replace(/\s+/g, '_')}_Resume.pdf`;
             
-            // 3. Cloud Archive for History (Actual PDF File)
-            if (user.id) {
-                const pdfBlob = pdf.output('blob');
-                const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-                await databaseService.uploadAndRecordPDF(pdfFile, user.id);
-            }
-
-            // 4. Trigger Instant Download
+            // 3. Trigger Instant Download
             pdf.save(fileName);
             
         } catch (e: any) {
@@ -150,9 +143,11 @@ const ResumeBuilder: React.FC<ResumeBuilderProps> = ({ user, resumeId }) => {
                 fullText += chunk;
                 if (section === 'summary') handleChange('summary', fullText);
                 else if (section === 'experience' && index !== undefined) {
-                    const newExp = [...resume.experience];
-                    newExp[index] = { ...newExp[index], responsibilities: fullText };
-                    handleChange('experience', newExp);
+                    setResume(prev => {
+                        const newExp = [...prev.experience];
+                        newExp[index] = { ...newExp[index], responsibilities: fullText };
+                        return { ...prev, experience: newExp };
+                    });
                 }
             }
         } catch (e) {
