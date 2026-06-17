@@ -173,7 +173,7 @@ const IndustryQA: React.FC = () => {
                                       : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-none border border-white/10'
                               }`}>
                                   <div className="prose prose-xs md:prose-sm dark:prose-invert max-w-none text-sm leading-relaxed">
-                                      <div dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br />') }} />
+                                      <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
                                       {msg.isStreaming && <span className="inline-block w-1.5 h-3 ml-1 bg-indigo-500 animate-pulse rounded-full" />}
                                   </div>
                                   
